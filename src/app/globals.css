@@ -1,0 +1,224 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #000000;
+  --color-accent: #2563eb;
+  --color-accent-light: #eff6ff;
+  --color-muted: #6b7280;
+  --color-border: #e5e7eb;
+  --color-surface: #f9fafb;
+  --color-code-bg: #1e293b;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Markdown content styles */
+.markdown-content h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  line-height: 1.2;
+  color: #111827;
+}
+
+.markdown-content h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  line-height: 1.3;
+  color: #111827;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+
+.markdown-content h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: #111827;
+}
+
+.markdown-content p {
+  margin-bottom: 1rem;
+  line-height: 1.7;
+  color: #374151;
+}
+
+.markdown-content ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.markdown-content ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.markdown-content li {
+  margin-bottom: 0.5rem;
+  line-height: 1.7;
+  color: #374151;
+}
+
+.markdown-content li > strong {
+  color: #111827;
+}
+
+.markdown-content blockquote {
+  border-left: 4px solid #2563eb;
+  padding-left: 1rem;
+  margin: 1.5rem 0;
+  color: #4b5563;
+  font-style: italic;
+}
+
+.markdown-content pre {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+  font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.markdown-content code {
+  background: #f3f4f6;
+  color: #111827;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  font-size: 0.875em;
+}
+
+.markdown-content pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+}
+
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+}
+
+.markdown-content th {
+  background: #f9fafb;
+  font-weight: 600;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e5e7eb;
+  color: #111827;
+}
+
+.markdown-content td {
+  padding: 0.75rem 1rem;
+  border: 1px solid #e5e7eb;
+  color: #374151;
+}
+
+.markdown-content tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 2rem 0;
+}
+
+.markdown-content a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+/* ============================================================
+   Code block chrome (header bar + wrapper)
+   ============================================================ */
+.markdown-content .code-header {
+  background: #1e293b;
+  color: #94a3b8;
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #334155;
+}
+
+.markdown-content .code-block-wrapper {
+  margin: 1.5rem 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid #334155;
+}
+
+.markdown-content .code-block-wrapper pre {
+  margin: 0;
+  border-radius: 0;
+  background: #1e293b;
+}
+
+/* ============================================================
+   highlight.js token colours — mirrors PDF_CSS in pdf-generator.ts
+   exactly, so preview and PDF share an identical palette.
+
+   Source palette: custom dark theme on slate-900 (#1e293b) base
+   • Keywords  → purple  (#c084fc)
+   • Built-ins → sky     (#38bdf8)
+   • Types     → orange  (#fb923c)
+   • Strings   → green   (#4ade80)
+   • Functions → blue    (#60a5fa)
+   • Comments  → slate   (#64748b, italic)
+   • Attrs     → orange  (#f97316)
+   ============================================================ */
+.hljs                  { background: #1e293b; color: #e2e8f0; }
+.hljs-keyword          { color: #c084fc; font-weight: 500; }
+.hljs-built_in         { color: #38bdf8; }
+.hljs-type             { color: #fb923c; }
+.hljs-literal          { color: #38bdf8; }
+.hljs-number           { color: #fb923c; }
+.hljs-string           { color: #4ade80; }
+.hljs-regexp           { color: #4ade80; }
+.hljs-symbol           { color: #c084fc; }
+.hljs-class            { color: #fb923c; }
+.hljs-function         { color: #60a5fa; }
+.hljs-title            { color: #60a5fa; }
+.hljs-params           { color: #e2e8f0; }
+.hljs-comment          { color: #64748b; font-style: italic; }
+.hljs-doctag           { color: #64748b; font-style: italic; }
+.hljs-attr             { color: #f97316; }
+.hljs-attribute        { color: #f97316; }
+.hljs-variable         { color: #e2e8f0; }
+.hljs-bullet           { color: #38bdf8; }
+.hljs-name             { color: #67e8f9; }
+.hljs-tag              { color: #67e8f9; }
+.hljs-selector-tag     { color: #fb923c; }
+.hljs-selector-id      { color: #60a5fa; }
+.hljs-selector-class   { color: #4ade80; }
+.hljs-meta             { color: #94a3b8; }
+.hljs-meta-keyword     { color: #c084fc; }
+.hljs-operator         { color: #e2e8f0; }
+.hljs-punctuation      { color: #94a3b8; }
+.hljs-property         { color: #60a5fa; }
+.hljs-template-tag     { color: #fb923c; }
+.hljs-template-variable{ color: #4ade80; }
+.hljs-addition         { background-color: #052e16; color: #86efac; display: inline-block; width: 100%; }
+.hljs-deletion         { background-color: #450a0a; color: #fca5a5; display: inline-block; width: 100%; }
+.hljs-emphasis         { font-style: italic; }
+.hljs-strong           { font-weight: 700; }

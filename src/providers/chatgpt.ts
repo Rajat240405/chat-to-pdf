@@ -38,7 +38,18 @@ import { InvalidShareUrlError, ExtractionError } from "./types";
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const CHATGPT_HOSTNAMES = new Set(["chatgpt.com", "chat.openai.com"]);
-const SHARE_PATH_RE = /^\/(?:share|c)\/([a-zA-Z0-9_-]+)/;
+/**
+ * Matches ONLY public share links: /share/<uuid>
+ * /c/<id> (own conversations) deliberately excluded — they require auth
+ * and are not public share pages.
+ */
+const SHARE_PATH_RE = /^\/share\/([a-zA-Z0-9_-]+)(?:\/.*)?$/;
+
+/**
+ * Matches own-conversation links that look like share links but aren't.
+ * Used to produce a specific InvalidShareUrlError message.
+ */
+const OWN_CONV_PATH_RE = /^\/c\/([a-zA-Z0-9_-]+)/;
 
 /** Roles we keep. Tool outputs, system prompts, and internals are filtered. */
 const KEPT_ROLES = new Set(["user", "assistant"]);
@@ -277,10 +288,21 @@ function normalizeFromMapping(
 
   const ordered: RawNode[] = [];
 
-  // DFS from the root, always taking the LAST child (most recent branch)
+  // Cycle guard: every nodeId that has been enqueued is recorded here.
+  // Without this, a malformed mapping where A.children includes B and
+  // B.children includes A causes walk() to recurse indefinitely and crash
+  // the process with a JavaScript stack overflow error.
+  // In practice ChatGPT's backend does not produce cycles, but corrupted
+  // share pages or future branching features could.
+  const visited = new Set<string>();
+
+  // DFS from the root, always following the LAST child (most recent branch).
+  // visited ensures each node is visited at most once, breaking all cycles.
   function walk(nodeId: string) {
+    if (visited.has(nodeId)) return; // cycle detected — stop traversal here
     const node = mapping[nodeId];
     if (!node) return;
+    visited.add(nodeId); // mark BEFORE recursing so re-entry is caught immediately
     ordered.push(node);
     const children = node.children ?? [];
     if (children.length > 0) {
@@ -297,18 +319,25 @@ function normalizeFromMapping(
     .filter((m) => m.content.trim().length > 0);
 }
 
+
 // ── HTTP fetch ─────────────────────────────────────────────────────────────────
 
 /**
  * Fetches a ChatGPT share page with browser-like headers.
  * Handles common error responses and retries once on 429.
  */
-async function fetchSharePage(url: string): Promise<string> {
+/**
+ * Exported so the fetch layer can be tested independently of parsing.
+ * Returns raw UTF-8 HTML. Throws ExtractionError on any HTTP/network failure.
+ */
+export async function fetchChatGPTSharePage(url: string): Promise<string> {
   const doFetch = async () =>
     fetch(url, {
       method: "GET",
       headers: BROWSER_HEADERS,
       redirect: "follow",
+      // Do not cache — share pages can be updated after creation
+      cache: "no-store",
     });
 
   let res = await doFetch();
@@ -425,17 +454,27 @@ export class ChatGPTAdapter implements ProviderAdapter {
     }
   }
 
-  /** True only for /share/<id> or /c/<id> paths — these are extractable. */
+  /**
+   * Returns true ONLY for public share links:
+   *   https://chatgpt.com/share/<uuid>
+   *
+   * /c/<id> links (own conversations) return false — they require
+   * authentication and cannot be fetched as public share pages.
+   * detect() still returns true for those URLs so we can give a
+   * specific error message in extract().
+   */
   isShareableUrl(url: string): boolean {
     try {
       const { hostname, pathname } = new URL(url);
-      return CHATGPT_HOSTNAMES.has(hostname) && SHARE_PATH_RE.test(pathname);
+      // Only chatgpt.com — legacy chat.openai.com share pages redirect
+      // to chatgpt.com but the canonical target is chatgpt.com/share/<uuid>.
+      return hostname === "chatgpt.com" && SHARE_PATH_RE.test(pathname);
     } catch {
       return false;
     }
   }
 
-  /** Returns the share/conversation ID from the URL path, or null. */
+  /** Returns the share UUID from a /share/<uuid> URL, or null. */
   extractShareId(url: string): string | null {
     try {
       const match = new URL(url).pathname.match(SHARE_PATH_RE);
@@ -464,16 +503,31 @@ export class ChatGPTAdapter implements ProviderAdapter {
   async extract(url: string): Promise<Conversation> {
     // ── Step 1: URL validation ───────────────────────────────────────────────
     if (!this.isShareableUrl(url)) {
+      // Give a specific message for /c/<id> own-conversation links
+      try {
+        const { pathname } = new URL(url);
+        if (OWN_CONV_PATH_RE.test(pathname)) {
+          throw new InvalidShareUrlError(
+            this.name,
+            url,
+            "/c/<id> URLs are personal conversations that require login. " +
+              "Use the Share button in ChatGPT to create a public share link " +
+              "(https://chatgpt.com/share/<uuid>) and paste that instead."
+          );
+        }
+      } catch (e) {
+        if (e instanceof InvalidShareUrlError) throw e;
+      }
       throw new InvalidShareUrlError(
         this.name,
         url,
-        "URL must be a public ChatGPT share link: https://chatgpt.com/share/<id>"
+        "URL must be a public ChatGPT share link: https://chatgpt.com/share/<uuid>"
       );
     }
 
     try {
       // ── Step 2: Fetch HTML ─────────────────────────────────────────────────
-      const html = await fetchSharePage(url);
+      const html = await fetchChatGPTSharePage(url);
 
       // ── Step 3: Parse __NEXT_DATA__ ───────────────────────────────────────
       const nextData = parseNextDataScript(html);

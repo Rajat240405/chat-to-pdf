@@ -1,21 +1,20 @@
 // scripts/validate-chatgpt-real-extraction.mjs
+// End-to-end validation against the real share URL using the updated pipeline.
+// Mirrors src/providers/chatgpt.ts (RR7 primary, __NEXT_DATA__ fallback).
 // Run: node scripts/validate-chatgpt-real-extraction.mjs
-//
-// End-to-end extraction test against a real public ChatGPT share URL.
-// Mirrors the full pipeline from src/providers/chatgpt.ts in plain JS.
-// Produces structured JSON output consumed by the report generator.
 
-const TARGET_URL = "https://chatgpt.com/share/6a3b9a96-b39c-83ee-b869-1b4279145496";
+import { writeFileSync } from "fs";
 
-// ── Browser-like headers (mirrors BROWSER_HEADERS in chatgpt.ts) ──────────────
+const TARGET_URL =
+  "https://chatgpt.com/share/6a3b9a96-b39c-83ee-b869-1b4279145496";
 
 const BROWSER_HEADERS = {
   "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-    "AppleWebKit/537.36 (KHTML, like Gecko) " +
-    "Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
   Accept:
-    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif," +
+    "image/webp,*/*;q=0.8",
   "Accept-Language": "en-US,en;q=0.9",
   "Cache-Control": "no-cache",
   Pragma: "no-cache",
@@ -25,222 +24,7 @@ const BROWSER_HEADERS = {
   "Upgrade-Insecure-Requests": "1",
 };
 
-// ── Inline pipeline (mirrors chatgpt.ts exactly) ───────────────────────────────
-
-function parseNextDataScript(html) {
-  const match = html.match(/<script\b[^>]*\bid="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i);
-  if (!match) return { data: null, error: "__NEXT_DATA__ script tag not found in HTML" };
-  try {
-    return { data: JSON.parse(match[1]), error: null };
-  } catch (e) {
-    return { data: null, error: `JSON.parse failed: ${e.message}` };
-  }
-}
-
-function deepGet(obj, ...keys) {
-  let cur = obj;
-  for (const key of keys) {
-    if (cur === null || typeof cur !== "object") return undefined;
-    cur = cur[key];
-  }
-  return cur;
-}
-
-const CANDIDATE_PATHS = [
-  ["props", "pageProps", "serverResponse", "data"],
-  ["props", "pageProps", "serverResponse"],
-  ["props", "pageProps", "sharedConversation"],
-  ["props", "pageProps"],
-];
-
-function findConversationData(nextData) {
-  for (const path of CANDIDATE_PATHS) {
-    const candidate = deepGet(nextData, ...path);
-    if (
-      candidate !== null &&
-      candidate !== undefined &&
-      typeof candidate === "object" &&
-      (
-        Array.isArray(candidate.linear_conversation) ||
-        typeof candidate.mapping === "object" ||
-        typeof candidate.title === "string"
-      )
-    ) {
-      return { data: candidate, path: path.join(".") };
-    }
-  }
-  return { data: null, path: null };
-}
-
-const KEPT_ROLES = new Set(["user", "assistant"]);
-
-function shouldKeepNode(node) {
-  const msg = node.message;
-  if (!msg) return { keep: false, reason: "no message" };
-  if (!msg.author?.role) return { keep: false, reason: "no author role" };
-  if (!KEPT_ROLES.has(msg.author.role)) return { keep: false, reason: `role=${msg.author.role}` };
-  if (msg.weight === 0) return { keep: false, reason: "weight=0" };
-  if (msg.recipient && msg.recipient !== "all") return { keep: false, reason: `recipient=${msg.recipient}` };
-  return { keep: true, reason: null };
-}
-
-function extractTextContent(content) {
-  if (!content) return { text: "", type: "null" };
-  if (content.content_type === "text" && Array.isArray(content.parts)) {
-    const text = content.parts
-      .filter(p => typeof p === "string" && p.trim().length > 0)
-      .join("\n");
-    return { text, type: "text/parts" };
-  }
-  if (typeof content.text === "string") {
-    return { text: content.text, type: "text/direct" };
-  }
-  if (Array.isArray(content.parts)) {
-    const textParts = content.parts.filter(p => typeof p === "string" && p.trim().length > 0);
-    if (textParts.length > 0) return { text: textParts.join("\n"), type: "parts/mixed" };
-  }
-  return { text: "", type: content.content_type ?? "unknown" };
-}
-
-function normalizeNode(node, index) {
-  const msg = node.message;
-  const { text: content, type: contentType } = extractTextContent(msg.content);
-  const ts =
-    typeof msg.create_time === "number" && msg.create_time > 0
-      ? new Date(msg.create_time * 1000).toISOString()
-      : null;
-  return {
-    id: msg.id ?? node.id ?? `chatgpt-msg-${index}`,
-    role: msg.author.role,
-    content,
-    contentType,
-    timestamp: ts,
-    contentLength: content.length,
-  };
-}
-
-function normalizeFromLinear(nodes) {
-  const filtered = [];
-  const filterLog = [];
-
-  nodes.forEach((node, i) => {
-    const { keep, reason } = shouldKeepNode(node);
-    if (!keep) {
-      filterLog.push({
-        index: i,
-        id: node.message?.id ?? node.id ?? `node-${i}`,
-        role: node.message?.author?.role ?? "unknown",
-        reason,
-      });
-      return;
-    }
-    const normalized = normalizeNode(node, i);
-    if (normalized.content.trim().length === 0) {
-      filterLog.push({ index: i, id: normalized.id, role: normalized.role, reason: "empty content" });
-      return;
-    }
-    filtered.push(normalized);
-  });
-
-  return { messages: filtered, filterLog, strategy: "linear_conversation" };
-}
-
-function normalizeFromMapping(mapping) {
-  const roots = Object.values(mapping).filter(
-    node => !node.parent || !(node.parent in mapping)
-  );
-  if (roots.length === 0) return { messages: [], filterLog: [], strategy: "mapping/no-roots" };
-
-  const ordered = [];
-  const visited = new Set(); // cycle guard
-
-  function walk(nodeId) {
-    if (visited.has(nodeId)) return;
-    const node = mapping[nodeId];
-    if (!node) return;
-    visited.add(nodeId);
-    ordered.push(node);
-    const children = node.children ?? [];
-    if (children.length > 0) walk(children[children.length - 1]);
-  }
-
-  walk(roots[0].id ?? Object.keys(mapping)[0]);
-
-  const filtered = [];
-  const filterLog = [];
-
-  ordered.forEach((node, i) => {
-    const { keep, reason } = shouldKeepNode(node);
-    if (!keep) {
-      filterLog.push({ index: i, id: node.message?.id ?? node.id, role: node.message?.author?.role, reason });
-      return;
-    }
-    const normalized = normalizeNode(node, i);
-    if (normalized.content.trim().length === 0) {
-      filterLog.push({ index: i, id: normalized.id, role: normalized.role, reason: "empty content" });
-      return;
-    }
-    filtered.push(normalized);
-  });
-
-  return { messages: filtered, filterLog, strategy: "mapping" };
-}
-
-function assembleConversation(data, sourceUrl) {
-  let result;
-
-  if (Array.isArray(data.linear_conversation) && data.linear_conversation.length > 0) {
-    result = normalizeFromLinear(data.linear_conversation);
-    result.rawCount = data.linear_conversation.length;
-  } else if (data.mapping && typeof data.mapping === "object") {
-    result = normalizeFromMapping(data.mapping);
-    result.rawCount = Object.keys(data.mapping).length;
-  } else {
-    return { ok: false, error: "No linear_conversation or mapping found" };
-  }
-
-  const { messages, filterLog, strategy, rawCount } = result;
-
-  if (messages.length === 0) {
-    return { ok: false, error: "No extractable messages after filtering", filterLog, strategy };
-  }
-
-  const firstUserMsg = messages.find(m => m.role === "user");
-  const title =
-    typeof data.title === "string" && data.title.trim().length > 0
-      ? data.title.trim()
-      : firstUserMsg
-      ? firstUserMsg.content.split("\n")[0].slice(0, 80).trim()
-      : "Untitled ChatGPT Conversation";
-
-  const metadata = {};
-  if (typeof data.create_time === "number" && data.create_time > 0) {
-    metadata.created = new Date(data.create_time * 1000).toISOString();
-  }
-  if (typeof data.update_time === "number" && data.update_time > 0) {
-    metadata.updated = new Date(data.update_time * 1000).toISOString();
-  }
-  if (data.model && typeof data.model === "object" && data.model.slug) {
-    metadata.model = String(data.model.slug);
-  }
-  if (data.conversation_id) {
-    metadata.conversationId = String(data.conversation_id);
-  }
-
-  return {
-    ok: true,
-    provider: "chatgpt",
-    title,
-    messages,
-    sourceUrl,
-    metadata,
-    strategy,
-    rawCount,
-    filterLog,
-  };
-}
-
-// ── Fetch layer ────────────────────────────────────────────────────────────────
+// ── Fetch ─────────────────────────────────────────────────────────────────────
 
 async function fetchPage(url) {
   const start = Date.now();
@@ -253,226 +37,361 @@ async function fetchPage(url) {
       cache: "no-store",
     });
   } catch (e) {
-    return { ok: false, error: `Network error: ${e.message}`, elapsed: Date.now() - start };
+    return { ok: false, error: `Network: ${e.message}`, elapsed: Date.now() - start };
   }
-
   const elapsed = Date.now() - start;
-
-  if (!res.ok) {
-    return { ok: false, error: `HTTP ${res.status} ${res.statusText}`, elapsed, status: res.status };
-  }
-
+  if (!res.ok)
+    return { ok: false, error: `HTTP ${res.status}`, elapsed, status: res.status };
   const html = await res.text();
+  return { ok: true, html, status: res.status, elapsed, htmlLength: html.length, finalUrl: res.url };
+}
+
+// ── React Router 7 parser (mirrors chatgpt.ts) ────────────────────────────────
+
+function extractEnqueuePayload(html) {
+  const m = html.match(/streamController\.enqueue\("((?:[^"\\]|\\.)*)"\)/);
+  if (!m) return null;
+  try { return JSON.parse(`"${m[1]}"`); } catch { return null; }
+}
+
+function resolveFlatRef(flat, item) {
+  if (!item || typeof item !== "object" || Array.isArray(item)) return {};
+  const out = {};
+  for (const [k, v] of Object.entries(item)) {
+    const ki = parseInt(k.replace(/^_/, ""), 10);
+    if (isNaN(ki)) continue;
+    const keyName = flat[ki];
+    if (typeof keyName !== "string") continue;
+    out[keyName] = typeof v === "number" && v >= 0 && v < flat.length ? flat[v] : v;
+  }
+  return out;
+}
+
+function extractPartsText(flat, partsVal) {
+  if (!Array.isArray(partsVal)) return "";
+  const texts = [];
+  for (const part of partsVal) {
+    if (typeof part === "string") texts.push(part);
+    else if (typeof part === "number") { const v = flat[part]; if (typeof v === "string") texts.push(v); }
+    else if (Array.isArray(part)) {
+      for (const sub of part) {
+        if (typeof sub === "string") texts.push(sub);
+        else if (typeof sub === "number") { const v = flat[sub]; if (typeof v === "string") texts.push(v); }
+      }
+    }
+  }
+  return texts.join("\n");
+}
+
+function resolveNodeFromFlat(flat, nodeIdx) {
+  const nodeRaw = flat[nodeIdx];
+  if (!nodeRaw || typeof nodeRaw !== "object" || Array.isArray(nodeRaw)) return null;
+  const node = resolveFlatRef(flat, nodeRaw);
+  const children = Array.isArray(node.children)
+    ? node.children.filter(c => typeof c === "string")
+    : [];
+  const msgRaw = node.message;
+  if (!msgRaw || typeof msgRaw !== "object" || Array.isArray(msgRaw))
+    return { id: node.id, parent: node.parent ?? null, children, message: null };
+  const msg = resolveFlatRef(flat, msgRaw);
+  const authorRaw = msg.author;
+  const author = authorRaw && typeof authorRaw === "object" && !Array.isArray(authorRaw)
+    ? resolveFlatRef(flat, authorRaw) : {};
+  const role = typeof author.role === "string" ? author.role : undefined;
+  const contentRaw = msg.content;
+  const content = contentRaw && typeof contentRaw === "object" && !Array.isArray(contentRaw)
+    ? resolveFlatRef(flat, contentRaw) : {};
+  const text = extractPartsText(flat, content.parts);
+  const ctype = typeof content.content_type === "string" ? content.content_type : "text";
+  const ct = typeof msg.create_time === "number" && msg.create_time > 0 ? msg.create_time : null;
+  const ut = typeof msg.update_time === "number" && msg.update_time > 0 ? msg.update_time : null;
+  const weight = typeof msg.weight === "number" ? msg.weight : 1;
+  const recipient = typeof msg.recipient === "string" ? msg.recipient : "all";
   return {
-    ok: true,
-    html,
-    status: res.status,
-    elapsed,
-    htmlLength: html.length,
-    hasNextData: html.includes("__NEXT_DATA__"),
-    finalUrl: res.url,
+    id: typeof node.id === "string" ? node.id : undefined,
+    parent: typeof node.parent === "string" ? node.parent : null,
+    children,
+    message: {
+      id: typeof msg.id === "string" ? msg.id : undefined,
+      author: { role },
+      content: { content_type: ctype, parts: text ? [text] : [] },
+      create_time: ct, update_time: ut, weight, recipient,
+    },
   };
 }
 
-// ── Content analysis helpers ──────────────────────────────────────────────────
-
-function hasCodeBlocks(text) {
-  return /```[\s\S]*?```/.test(text) || /`[^`\n]+`/.test(text);
+function parseReactRouterStream(html) {
+  const payload = extractEnqueuePayload(html);
+  if (!payload) return null;
+  let flat;
+  try { flat = JSON.parse(payload); } catch { return null; }
+  if (!Array.isArray(flat) || flat.length === 0) return null;
+  const lcIdx = flat.indexOf("linear_conversation");
+  if (lcIdx === -1) return null;
+  const lcRaw = flat[lcIdx + 1];
+  if (!Array.isArray(lcRaw)) return null;
+  const nodeIndices = lcRaw.filter(v => typeof v === "number");
+  const linearConversation = nodeIndices
+    .map(i => resolveNodeFromFlat(flat, i))
+    .filter(n => n !== null);
+  const ptIdx = flat.indexOf("pageTitle");
+  const title = ptIdx > -1 && typeof flat[ptIdx + 1] === "string" ? flat[ptIdx + 1] : undefined;
+  const conversationId = flat.find(
+    v => typeof v === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
+  );
+  const modelName = flat.find(
+    v => typeof v === "string" && /^(GPT|gpt-|o[0-9]|claude|gemini)/i.test(v)
+  );
+  const tss = flat.filter(v => typeof v === "number" && v > 1e9 && v < 1e10).sort((a, b) => a - b);
+  return { title, conversation_id: conversationId, linear_conversation: linearConversation,
+    create_time: tss[0], update_time: tss[tss.length - 1],
+    ...(modelName ? { model: { slug: modelName } } : {}) };
 }
 
-function hasMarkdown(text) {
-  return /^#{1,6}\s/m.test(text) ||
-         /\*\*[^*]+\*\*/.test(text) ||
-         /\*[^*\n]+\*/.test(text) ||
-         /^\s*[-*+]\s/m.test(text) ||
-         /^\s*\d+\.\s/m.test(text) ||
-         /\[.+\]\(.+\)/.test(text);
+// ── Legacy __NEXT_DATA__ fallback ─────────────────────────────────────────────
+
+function parseNextDataScript(html) {
+  const m = html.match(/<script\b[^>]*\bid="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i);
+  if (!m) return null;
+  try { return JSON.parse(m[1]); } catch { return null; }
 }
 
-function countCodeBlocks(text) {
-  const matches = text.match(/```[\s\S]*?```/g);
-  return matches ? matches.length : 0;
+function deepGet(obj, ...keys) {
+  let cur = obj;
+  for (const key of keys) {
+    if (cur === null || typeof cur !== "object") return undefined;
+    cur = cur[key];
+  }
+  return cur;
 }
 
-function extractCodeLanguages(text) {
-  const matches = [...text.matchAll(/```(\w+)/g)];
-  return [...new Set(matches.map(m => m[1]).filter(Boolean))];
+function findConversationData(nextData) {
+  const candidates = [
+    deepGet(nextData, "props", "pageProps", "serverResponse", "data"),
+    deepGet(nextData, "props", "pageProps", "serverResponse"),
+    deepGet(nextData, "props", "pageProps", "sharedConversation"),
+    deepGet(nextData, "props", "pageProps"),
+  ];
+  for (const c of candidates) {
+    if (c && typeof c === "object" &&
+        (Array.isArray(c.linear_conversation) || typeof c.mapping === "object" || typeof c.title === "string"))
+      return c;
+  }
+  return null;
 }
 
-// ── Main ───────────────────────────────────────────────────────────────────────
+// ── Normalization (mirrors chatgpt.ts) ────────────────────────────────────────
+
+const KEPT_ROLES = new Set(["user", "assistant"]);
+
+function shouldKeepNode(node) {
+  const msg = node.message;
+  if (!msg) return false;
+  if (!msg.author?.role) return false;
+  if (!KEPT_ROLES.has(msg.author.role)) return false;
+  if (msg.weight === 0) return false;
+  if (msg.recipient && msg.recipient !== "all") return false;
+  return true;
+}
+
+function extractTextContent(content) {
+  if (!content) return "";
+  if (content.content_type === "text" && Array.isArray(content.parts))
+    return content.parts.filter(p => typeof p === "string" && p.trim()).join("\n");
+  if (typeof content.text === "string") return content.text;
+  if (Array.isArray(content.parts)) {
+    const t = content.parts.filter(p => typeof p === "string" && p.trim());
+    if (t.length) return t.join("\n");
+  }
+  return "";
+}
+
+function normalizeNode(node, index) {
+  const msg = node.message;
+  const content = extractTextContent(msg.content);
+  const ts = typeof msg.create_time === "number" && msg.create_time > 0
+    ? new Date(msg.create_time * 1000).toISOString() : null;
+  return { id: msg.id ?? node.id ?? `msg-${index}`, role: msg.author.role,
+    content, timestamp: ts, contentLength: content.length };
+}
+
+function normalizeFromLinear(nodes) {
+  const filterLog = [];
+  const messages = [];
+  nodes.forEach((node, i) => {
+    if (!shouldKeepNode(node)) { filterLog.push({ i, role: node.message?.author?.role, reason: "filtered" }); return; }
+    const m = normalizeNode(node, i);
+    if (!m.content.trim()) { filterLog.push({ i, role: m.role, reason: "empty" }); return; }
+    messages.push(m);
+  });
+  return { messages, filterLog };
+}
+
+function assembleConversation(data, sourceUrl, jsonPath = "") {
+  let rawCount = 0;
+  let result;
+  if (Array.isArray(data.linear_conversation) && data.linear_conversation.length > 0) {
+    rawCount = data.linear_conversation.length;
+    result = normalizeFromLinear(data.linear_conversation);
+  } else { return { ok: false, error: "No linear_conversation or mapping" }; }
+  const { messages, filterLog } = result;
+  if (!messages.length) return { ok: false, error: "No extractable messages after filtering", filterLog };
+  const firstUser = messages.find(m => m.role === "user");
+  const title = typeof data.title === "string" && data.title.trim()
+    ? data.title.trim()
+    : firstUser ? firstUser.content.split("\n")[0].slice(0, 80) : "Untitled ChatGPT Conversation";
+  const metadata = {};
+  if (typeof data.create_time === "number" && data.create_time > 0)
+    metadata.created = new Date(data.create_time * 1000).toISOString();
+  if (data.model?.slug) metadata.model = String(data.model.slug);
+  if (data.conversation_id) metadata.conversationId = String(data.conversation_id);
+  if (jsonPath) metadata.chatgptJsonPath = jsonPath;
+  metadata.filteredMessageCount = rawCount - messages.length;
+  return { ok: true, title, messages, metadata, filterLog, rawCount };
+}
+
+// ── Content helpers ───────────────────────────────────────────────────────────
+
+function hasCode(t) { return /```[\s\S]*?```/.test(t); }
+function hasMd(t) { return /^#{1,6}\s/m.test(t) || /\*\*/.test(t) || /\|.+\|/.test(t); }
+function codeCount(t) { return (t.match(/```[\s\S]*?```/g) || []).length; }
+function codeLangs(t) { return [...new Set([...t.matchAll(/```(\w+)/g)].map(m => m[1]).filter(Boolean))]; }
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 console.log("=".repeat(65));
-console.log("Chat2PDF — ChatGPT Real Extraction Test");
+console.log("Chat2PDF — ChatGPT Real Extraction (React Router 7 Migration)");
 console.log("=".repeat(65));
 console.log(`URL: ${TARGET_URL}\n`);
 
 // Step 1: Fetch
-console.log("Step 1: Fetching share page...");
+console.log("Step 1: Fetching...");
 const fetchResult = await fetchPage(TARGET_URL);
-
-if (!fetchResult.ok) {
-  console.error(`\n❌ FETCH FAILED: ${fetchResult.error}`);
-  console.error(`   Status: ${fetchResult.status ?? "N/A"}`);
-  process.exit(1);
-}
-
-console.log(`  ✅ HTTP ${fetchResult.status}  (${fetchResult.elapsed} ms)`);
-console.log(`  ✅ HTML length: ${(fetchResult.htmlLength / 1024).toFixed(1)} KB`);
+if (!fetchResult.ok) { console.error(`❌ FETCH FAILED: ${fetchResult.error}`); process.exit(1); }
+console.log(`  ✅ HTTP ${fetchResult.status} (${fetchResult.elapsed} ms, ${(fetchResult.htmlLength/1024).toFixed(1)} KB)`);
 console.log(`  ✅ Final URL: ${fetchResult.finalUrl}`);
-console.log(`  ${fetchResult.hasNextData ? "✅" : "❌"} __NEXT_DATA__ tag present`);
 
-if (!fetchResult.hasNextData) {
-  console.error("\n❌ PARSE FAILED: __NEXT_DATA__ not found in HTML.");
-  console.error("   Possible causes: bot-block page, login redirect, page structure changed.");
-  process.exit(1);
-}
+// Step 2: Parse (RR7 first)
+console.log("\nStep 2: Parsing...");
+let convData = null;
+let jsonPath = "";
+let parserUsed = "";
 
-// Step 2: Parse __NEXT_DATA__
-console.log("\nStep 2: Parsing __NEXT_DATA__...");
-const { data: nextData, error: parseError } = parseNextDataScript(fetchResult.html);
-
-if (!nextData) {
-  console.error(`\n❌ PARSE FAILED: ${parseError}`);
-  process.exit(1);
-}
-
-console.log(`  ✅ __NEXT_DATA__ parsed successfully`);
-console.log(`  ✅ Top-level keys: ${Object.keys(nextData).join(", ")}`);
-
-// Step 3: Find conversation payload
-console.log("\nStep 3: Locating conversation data...");
-const { data: convData, path: matchedPath } = findConversationData(nextData);
-
-if (!convData) {
-  console.error("\n❌ LOCATE FAILED: None of the 4 known paths matched.");
-  console.error("   Paths tried:", CANDIDATE_PATHS.map(p => p.join(".")).join(", "));
-  process.exit(1);
-}
-
-console.log(`  ✅ Matched path: ${matchedPath}`);
-console.log(`  ✅ Has linear_conversation: ${Array.isArray(convData.linear_conversation)} (${convData.linear_conversation?.length ?? 0} nodes)`);
-console.log(`  ✅ Has mapping: ${typeof convData.mapping === "object" && !!convData.mapping} (${convData.mapping ? Object.keys(convData.mapping).length : 0} entries)`);
-console.log(`  ✅ Has title: ${typeof convData.title === "string"} ("${convData.title ?? ""}")`);
-
-// Step 4: Assemble conversation
-console.log("\nStep 4: Normalizing messages...");
-const conv = assembleConversation(convData, TARGET_URL);
-
-if (!conv.ok) {
-  console.error(`\n❌ ASSEMBLY FAILED: ${conv.error}`);
-  if (conv.filterLog?.length) {
-    console.error("   Filter log:");
-    conv.filterLog.forEach(f => console.error(`     [${f.role}] ${f.id}: ${f.reason}`));
+convData = parseReactRouterStream(fetchResult.html);
+if (convData) {
+  jsonPath = "react-router-7/streamController.enqueue/linear_conversation";
+  parserUsed = "React Router 7";
+  console.log(`  ✅ Parsed via React Router 7 stream format`);
+} else {
+  const nextData = parseNextDataScript(fetchResult.html);
+  if (nextData) {
+    const found = findConversationData(nextData);
+    if (found) { convData = found; jsonPath = "__NEXT_DATA__/props.pageProps"; parserUsed = "__NEXT_DATA__"; }
   }
-  process.exit(1);
+  if (convData) console.log(`  ⚠  Parsed via legacy __NEXT_DATA__ format`);
+  else { console.error("  ❌ PARSE FAILED: No known format found"); process.exit(1); }
 }
 
-// ── Results summary ───────────────────────────────────────────────────────────
+console.log(`  ✅ linear_conversation nodes: ${convData.linear_conversation?.length ?? 0}`);
+console.log(`  ✅ title: "${convData.title ?? "(from message)"}"`);
+console.log(`  ✅ model: ${convData.model?.slug ?? "(unknown)"}`);
+console.log(`  ✅ conversation_id: ${convData.conversation_id ?? "(none)"}`);
 
-const userMsgs      = conv.messages.filter(m => m.role === "user");
-const assistantMsgs = conv.messages.filter(m => m.role === "assistant");
-const totalRaw      = conv.rawCount;
-const totalKept     = conv.messages.length;
-const totalFiltered = conv.filterLog.length;
+// Step 3: Assemble
+console.log("\nStep 3: Normalizing...");
+const conv = assembleConversation(convData, TARGET_URL, jsonPath);
+if (!conv.ok) { console.error(`❌ ASSEMBLY FAILED: ${conv.error}`); process.exit(1); }
 
-// Aggregate content analysis across all messages
-const fullText         = conv.messages.map(m => m.content).join("\n\n");
-const codeBlockCount   = countCodeBlocks(fullText);
-const codeLanguages    = extractCodeLanguages(fullText);
-const markdownDetected = hasMarkdown(fullText);
+const userMsgs = conv.messages.filter(m => m.role === "user");
+const asstMsgs = conv.messages.filter(m => m.role === "assistant");
+const fullText = conv.messages.map(m => m.content).join("\n\n");
 
-// Per-message content summary (role + first 80 chars)
-const messageSummary = conv.messages.map((m, i) => ({
-  index: i + 1,
-  role: m.role,
-  id: m.id.slice(0, 8) + "...",
-  chars: m.contentLength,
-  hasCode: hasCodeBlocks(m.content),
-  hasMarkdown: hasMarkdown(m.content),
-  preview: m.content.replace(/\n/g, " ").slice(0, 80),
-  timestamp: m.timestamp,
-}));
+console.log(`  ✅ Kept: ${conv.messages.length} messages (${userMsgs.length} user, ${asstMsgs.length} assistant)`);
+console.log(`  ✅ Filtered: ${conv.metadata.filteredMessageCount} nodes removed`);
+console.log(`  ✅ chatgptJsonPath: ${conv.metadata.chatgptJsonPath}`);
 
+// Results
 console.log("\n" + "=".repeat(65));
-console.log("EXTRACTION RESULTS");
+console.log("RESULTS");
 console.log("=".repeat(65));
 console.log(`Title:              ${conv.title}`);
-console.log(`Strategy:           ${conv.strategy}`);
-console.log(`Matched path:       ${matchedPath}`);
-console.log(`Raw nodes:          ${totalRaw}`);
-console.log(`Kept messages:      ${totalKept}`);
-console.log(`Filtered out:       ${totalFiltered}`);
+console.log(`Parser used:        ${parserUsed}`);
+console.log(`JSON path:          ${jsonPath}`);
+console.log(`Raw nodes:          ${conv.rawCount}`);
+console.log(`Kept messages:      ${conv.messages.length}`);
+console.log(`Filtered out:       ${conv.metadata.filteredMessageCount}`);
 console.log(`User messages:      ${userMsgs.length}`);
-console.log(`Assistant messages: ${assistantMsgs.length}`);
-console.log(`Code blocks found:  ${codeBlockCount}`);
-console.log(`Code languages:     ${codeLanguages.length > 0 ? codeLanguages.join(", ") : "none"}`);
-console.log(`Markdown detected:  ${markdownDetected}`);
-console.log(`\nMetadata:`);
-Object.entries(conv.metadata).forEach(([k, v]) => console.log(`  ${k}: ${v}`));
+console.log(`Assistant messages: ${asstMsgs.length}`);
+console.log(`Code blocks:        ${codeCount(fullText)}`);
+console.log(`Code languages:     ${codeLangs(fullText).join(", ") || "none"}`);
+console.log(`Markdown detected:  ${hasMd(fullText)}`);
+console.log(`Model:              ${conv.metadata.model ?? "(unknown)"}`);
+console.log(`Conversation ID:    ${conv.metadata.conversationId ?? "(none)"}`);
 
-if (totalFiltered > 0) {
-  console.log(`\nFilter log (${totalFiltered} nodes removed):`);
-  conv.filterLog.forEach(f =>
-    console.log(`  [${String(f.role).padEnd(9)}] ${f.id?.slice(0, 8)}... → ${f.reason}`)
-  );
-}
-
-console.log(`\nMessage summary:`);
-messageSummary.forEach(m => {
-  const flags = [m.hasCode && "code", m.hasMarkdown && "md"].filter(Boolean).join("+");
-  console.log(`  [${m.index.toString().padStart(2)}] ${m.role.padEnd(9)} ${m.chars.toString().padStart(6)} chars  ${flags.padEnd(7)}  "${m.preview}..."`);
+console.log("\n── Message summary ──");
+conv.messages.forEach((msg, i) => {
+  const flags = [hasCode(msg.content) && "code", hasMd(msg.content) && "md"].filter(Boolean).join("+") || "-";
+  console.log(`  [${String(i+1).padStart(2)}] ${msg.role.padEnd(9)} ${String(msg.contentLength).padStart(6)} chars  ${flags.padEnd(8)} "${msg.content.replace(/\n/g," ").slice(0,70)}"`);
 });
 
-// ── JSON output for report generation ────────────────────────────────────────
-
-const jsonReport = {
-  timestamp: new Date().toISOString(),
-  url: TARGET_URL,
-  fetch: {
-    status: fetchResult.status,
-    elapsed_ms: fetchResult.elapsed,
-    html_bytes: fetchResult.htmlLength,
-    final_url: fetchResult.finalUrl,
-    has_next_data: fetchResult.hasNextData,
-  },
-  extraction: {
-    strategy: conv.strategy,
-    matched_path: matchedPath,
-    raw_node_count: totalRaw,
-    kept_count: totalKept,
-    filtered_count: totalFiltered,
-    user_count: userMsgs.length,
-    assistant_count: assistantMsgs.length,
-  },
-  conversation: {
-    title: conv.title,
-    metadata: conv.metadata,
-  },
-  content_analysis: {
-    code_block_count: codeBlockCount,
-    code_languages: codeLanguages,
-    markdown_detected: markdownDetected,
-    total_chars: fullText.length,
-  },
-  filter_log: conv.filterLog,
-  message_summary: messageSummary,
-  failures: [],
-};
-
-// Write JSON sidecar for the report
-import { writeFileSync } from "fs";
-writeFileSync(
-  "scripts/chatgpt-extraction-results.json",
-  JSON.stringify(jsonReport, null, 2),
-  "utf8"
-);
-
-console.log("\n✅ JSON results written to scripts/chatgpt-extraction-results.json");
-
-console.log("\n" + "=".repeat(65));
-if (totalKept > 0 && conv.title) {
-  console.log("🎉 Extraction PASSED — all validation criteria met.");
-} else {
-  console.log("⚠  Extraction COMPLETED with warnings — check results above.");
+if (asstMsgs.length > 0) {
+  console.log("\n── First assistant message (markdown/code verification) ──");
+  console.log(asstMsgs[0].content.slice(0, 800));
 }
-console.log("=".repeat(65) + "\n");
+
+if (conv.filterLog?.length > 0) {
+  console.log(`\n── Filter log ──`);
+  conv.filterLog.forEach(f => console.log(`  [${f.i}] role=${f.role ?? "?"} → ${f.reason}`));
+}
+
+// Assertions
+console.log("\n── Assertions ──");
+let pass = 0, fail = 0;
+function check(label, cond, detail = "") {
+  if (cond) { console.log(`  ✅ ${label}`); pass++; }
+  else       { console.log(`  ❌ ${label}${detail ? " — " + detail : ""}`); fail++; }
+}
+
+check("Parser: React Router 7 used",   parserUsed === "React Router 7");
+check("No __NEXT_DATA__ required",      parserUsed !== "__NEXT_DATA__");
+check("Title extracted",               typeof conv.title === "string" && conv.title.length > 0);
+check("Title meaningful",              conv.title !== "Untitled ChatGPT Conversation");
+check("Message count > 0",            conv.messages.length > 0);
+check("Has user messages",             userMsgs.length > 0);
+check("Has assistant messages",        asstMsgs.length > 0);
+check("No tool messages",              conv.messages.every(m => m.role === "user" || m.role === "assistant"));
+check("No system messages in output",  conv.messages.every(m => m.role !== "system"));
+check("All messages have content",     conv.messages.every(m => m.content.trim().length > 0));
+check("Markdown preserved",            hasMd(fullText));
+check("Code blocks preserved",         codeCount(fullText) > 0);
+check("chatgptJsonPath set",           !!conv.metadata.chatgptJsonPath);
+check("filteredMessageCount set",      typeof conv.metadata.filteredMessageCount === "number");
+check("Conversation ID extracted",     !!conv.metadata.conversationId);
+check("Model extracted",               !!conv.metadata.model);
+
+console.log(`\n${"─".repeat(60)}`);
+console.log(`Assertions: ${pass} passed, ${fail} failed`);
+
+// Write JSON results
+const results = {
+  timestamp: new Date().toISOString(), url: TARGET_URL,
+  fetch: { status: fetchResult.status, html_bytes: fetchResult.htmlLength, elapsed_ms: fetchResult.elapsed },
+  parser_used: parserUsed, json_path: jsonPath,
+  conversation: { title: conv.title, model: conv.metadata.model, conversation_id: conv.metadata.conversationId },
+  counts: { raw_nodes: conv.rawCount, kept: conv.messages.length, filtered: conv.metadata.filteredMessageCount,
+    user: userMsgs.length, assistant: asstMsgs.length },
+  content: { code_blocks: codeCount(fullText), code_languages: codeLangs(fullText), markdown: hasMd(fullText) },
+  metadata: conv.metadata,
+  messages: conv.messages.map((m, i) => ({
+    index: i+1, role: m.role, chars: m.contentLength,
+    has_code: hasCode(m.content), has_md: hasMd(m.content),
+    preview: m.content.replace(/\n/g," ").slice(0, 100),
+  })),
+  assertions: { passed: pass, failed: fail },
+};
+writeFileSync("scripts/chatgpt-extraction-results.json", JSON.stringify(results, null, 2), "utf8");
+console.log("\n✅ Results → scripts/chatgpt-extraction-results.json");
+
+if (fail === 0) { console.log("🎉 All assertions passed.\n"); process.exit(0); }
+else { console.log("⚠  Failures — review above.\n"); process.exit(1); }

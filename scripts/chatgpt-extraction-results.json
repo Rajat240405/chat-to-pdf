@@ -1,133 +1,93 @@
 {
-  "timestamp": "2026-06-24T12:42:16.091Z",
+  "timestamp": "2026-06-24T16:51:01.557Z",
   "url": "https://chatgpt.com/share/6a3b9a96-b39c-83ee-b869-1b4279145496",
   "fetch": {
     "status": 200,
-    "html_bytes": 461696
+    "html_bytes": 462703,
+    "elapsed_ms": 1772
   },
-  "extraction_format": "react-router-7/streamController.enqueue/flat-reference-array",
-  "matched_path": "window.__reactRouterContext.streamController.enqueue → flat[linear_conversation] → node[message][content][parts]",
+  "parser_used": "React Router 7",
+  "json_path": "react-router-7/streamController.enqueue/linear_conversation",
   "conversation": {
     "title": "Math Question Answered",
-    "conversation_id": "6a3b9a96-b39c-83ee-b869-1b4279145496",
-    "model": "GPT-5.5"
+    "model": "gpt-5-5",
+    "conversation_id": "6a3b9a96-b39c-83ee-b869-1b4279145496"
   },
   "counts": {
-    "flat_array_length": 444,
     "raw_nodes": 11,
-    "kept_messages": 6,
-    "filtered_count": 5,
-    "user_count": 3,
-    "assistant_count": 3
+    "kept": 6,
+    "filtered": 5,
+    "user": 3,
+    "assistant": 3
   },
-  "content_analysis": {
-    "code_block_count": 3,
+  "content": {
+    "code_blocks": 3,
     "code_languages": [
       "python",
       "text",
       "markdown"
     ],
-    "markdown_detected": true,
-    "math_detected": false,
-    "total_chars": 557
+    "markdown": true
   },
-  "filter_log": [
-    {
-      "nodeIdx": 98,
-      "reason": "no message reference"
-    },
-    {
-      "nodeIdx": 99,
-      "role": "system",
-      "reason": "role=system filtered"
-    },
-    {
-      "nodeIdx": 100,
-      "role": "system",
-      "reason": "role=system filtered"
-    },
-    {
-      "nodeIdx": 104,
-      "role": "assistant",
-      "reason": "empty text"
-    },
-    {
-      "nodeIdx": 105,
-      "role": "system",
-      "reason": "role=system filtered"
-    }
-  ],
-  "message_summary": [
+  "metadata": {
+    "created": "2026-06-24T05:13:16.551Z",
+    "model": "gpt-5-5",
+    "conversationId": "6a3b9a96-b39c-83ee-b869-1b4279145496",
+    "chatgptJsonPath": "react-router-7/streamController.enqueue/linear_conversation",
+    "filteredMessageCount": 5
+  },
+  "messages": [
     {
       "index": 1,
       "role": "user",
-      "id": "d17cbe60-f9ce-4bd8-8efd-be97df064a23",
       "chars": 12,
       "has_code": false,
-      "has_markdown": false,
-      "has_math": false,
-      "timestamp": "1970-01-01T00:04:42.000Z",
+      "has_md": false,
       "preview": "What is 2+2?"
     },
     {
       "index": 2,
       "role": "assistant",
-      "id": "8af8d941-10df-46d4-8141-72e1d804ae13",
       "chars": 14,
       "has_code": false,
-      "has_markdown": true,
-      "has_math": false,
-      "timestamp": "1970-01-01T00:04:22.000Z",
+      "has_md": true,
       "preview": "2 + 2 = **4**."
     },
     {
       "index": 3,
       "role": "user",
-      "id": "1fb50255-03c3-4785-ae59-b5df1a54d589",
       "chars": 28,
       "has_code": false,
-      "has_markdown": false,
-      "has_math": false,
-      "timestamp": "1970-01-01T00:04:08.000Z",
+      "has_md": false,
       "preview": " Write a Python hello world."
     },
     {
       "index": 4,
       "role": "assistant",
-      "id": "61da462f-e782-4b21-952d-779774a74452",
       "chars": 150,
       "has_code": true,
-      "has_markdown": false,
-      "has_math": false,
-      "timestamp": "1970-01-01T00:03:19.000Z",
-      "preview": "Here's a simple Python \"Hello, World!\" program:  ```python print(\"Hello, World!\") ```  When you run it, the output will "
+      "has_md": false,
+      "preview": "Here's a simple Python \"Hello, World!\" program:  ```python print(\"Hello, World!\") ```  When you run "
     },
     {
       "index": 5,
       "role": "user",
-      "id": "6fbf17b6-8d76-483f-a8f4-13b2a56b23e5",
       "chars": 25,
       "has_code": false,
-      "has_markdown": false,
-      "has_math": false,
-      "timestamp": "1970-01-01T00:03:00.000Z",
+      "has_md": false,
       "preview": "Give me a markdown table."
     },
     {
       "index": 6,
       "role": "assistant",
-      "id": "c8d4e5b0-db9f-4948-8d4e-2cab196b5f10",
       "chars": 318,
       "has_code": true,
-      "has_markdown": true,
-      "has_math": false,
-      "timestamp": "1970-01-01T00:01:58.000Z",
-      "preview": "Here's a simple Markdown table:  | Name  | Age | City   | |-------|-----|--------| | Alice | 25  | London | | Bob   | 30"
+      "has_md": true,
+      "preview": "Here's a simple Markdown table:  | Name  | Age | City   | |-------|-----|--------| | Alice | 25  | L"
     }
   ],
-  "first_assistant_message": "2 + 2 = **4**.",
   "assertions": {
-    "passed": 12,
+    "passed": 16,
     "failed": 0
   }
 }

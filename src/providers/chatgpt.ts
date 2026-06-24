@@ -188,6 +188,204 @@ function findConversationData(nextData: unknown): RawConvData | null {
   return null;
 }
 
+// ── React Router 7 parsing (primary — replaces __NEXT_DATA__ on current ChatGPT) ────────
+//
+// As of 2025-2026 ChatGPT share pages use React Router 7 instead of Next.js.
+// Conversation data is embedded via:
+//   window.__reactRouterContext.streamController.enqueue("...");
+// The string is a JSON-serialized flat array of 400-500 items.
+// Objects inside it use the notation {_K: V} where flat[K] is the key name
+// string and flat[V] is the value.  Arrays inside it may contain [[textIdx]]
+// (nested one level deeper than a plain [string]).
+
+/** Extracts the first streamController.enqueue payload. */
+function extractEnqueuePayload(html: string): string | null {
+  const m = html.match(/streamController\.enqueue\("((?:[^"\\]|\\.)*)"\.?\)/);
+  if (!m) return null;
+  try { return JSON.parse(`"${m[1]}"`); } catch { return null; }
+}
+
+/**
+ * Resolves a flat-reference object {_K: V} one level.
+ * K is the index of the key-name string; V is the index of the value.
+ */
+function resolveFlatRef(
+  flat: unknown[],
+  item: unknown
+): Record<string, unknown> {
+  if (!item || typeof item !== "object" || Array.isArray(item)) return {};
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(item as Record<string, unknown>)) {
+    const ki = parseInt(k.replace(/^_/, ""), 10);
+    if (isNaN(ki)) continue;
+    const keyName = flat[ki];
+    if (typeof keyName !== "string") continue;
+    out[keyName] =
+      typeof v === "number" && v >= 0 && v < flat.length ? flat[v] : v;
+  }
+  return out;
+}
+
+/**
+ * Extracts text from a parts value.
+ * Handles string[], number[] (index refs), and [[textIdx]] nesting.
+ */
+function extractPartsText(flat: unknown[], partsVal: unknown): string {
+  if (!Array.isArray(partsVal)) return "";
+  const texts: string[] = [];
+  for (const part of partsVal) {
+    if (typeof part === "string") {
+      texts.push(part);
+    } else if (typeof part === "number") {
+      const v = flat[part];
+      if (typeof v === "string") texts.push(v);
+    } else if (Array.isArray(part)) {
+      for (const sub of part as unknown[]) {
+        if (typeof sub === "string") texts.push(sub);
+        else if (typeof sub === "number") {
+          const v = flat[sub];
+          if (typeof v === "string") texts.push(v);
+        }
+      }
+    }
+  }
+  return texts.join("\n");
+}
+
+/**
+ * Resolves a single conversation node from the flat array into a RawNode
+ * that is directly compatible with normalizeFromLinear().
+ */
+function resolveNodeFromFlat(flat: unknown[], nodeIdx: number): RawNode | null {
+  const nodeRaw = flat[nodeIdx];
+  if (!nodeRaw || typeof nodeRaw !== "object" || Array.isArray(nodeRaw)) return null;
+  const node = resolveFlatRef(flat, nodeRaw);
+
+  const children: string[] = Array.isArray(node.children)
+    ? (node.children as unknown[]).filter((c): c is string => typeof c === "string")
+    : [];
+
+  const msgRaw = node.message;
+  if (!msgRaw || typeof msgRaw !== "object" || Array.isArray(msgRaw)) {
+    return {
+      id: typeof node.id === "string" ? node.id : undefined,
+      parent: typeof node.parent === "string" ? node.parent : null,
+      children,
+      message: null,
+    };
+  }
+
+  const msg = resolveFlatRef(flat, msgRaw);
+
+  const authorRaw = msg.author;
+  const author =
+    authorRaw && typeof authorRaw === "object" && !Array.isArray(authorRaw)
+      ? resolveFlatRef(flat, authorRaw)
+      : {};
+  const role = typeof author.role === "string" ? author.role : undefined;
+
+  const contentRaw = msg.content;
+  const content =
+    contentRaw && typeof contentRaw === "object" && !Array.isArray(contentRaw)
+      ? resolveFlatRef(flat, contentRaw)
+      : {};
+  const text = extractPartsText(flat, content.parts);
+  const ctype =
+    typeof content.content_type === "string" ? content.content_type : "text";
+
+  const ct =
+    typeof msg.create_time === "number" && (msg.create_time as number) > 0
+      ? (msg.create_time as number)
+      : null;
+  const ut =
+    typeof msg.update_time === "number" && (msg.update_time as number) > 0
+      ? (msg.update_time as number)
+      : null;
+  const weight = typeof msg.weight === "number" ? (msg.weight as number) : 1;
+  const recipient =
+    typeof msg.recipient === "string" ? (msg.recipient as string) : "all";
+
+  return {
+    id: typeof node.id === "string" ? node.id : undefined,
+    parent: typeof node.parent === "string" ? node.parent : null,
+    children,
+    message: {
+      id: typeof msg.id === "string" ? (msg.id as string) : undefined,
+      author: { role },
+      content: { content_type: ctype, parts: text ? [text] : [] },
+      create_time: ct,
+      update_time: ut,
+      weight,
+      recipient,
+    },
+  };
+}
+
+/**
+ * Parses the React Router 7 flat-reference stream and returns a RawConvData
+ * compatible with assembleConversation().
+ * Returns null if the page does not use this format (no enqueue call found).
+ */
+function parseReactRouterStream(html: string): RawConvData | null {
+  const payload = extractEnqueuePayload(html);
+  if (!payload) return null;
+
+  let flat: unknown[];
+  try { flat = JSON.parse(payload) as unknown[]; }
+  catch { return null; }
+  if (!Array.isArray(flat) || flat.length === 0) return null;
+
+  // linear_conversation is a flat array key whose next item is [nodeIdx, ...]
+  const lcIdx = flat.indexOf("linear_conversation");
+  if (lcIdx === -1) return null;
+  const lcRaw = flat[lcIdx + 1];
+  if (!Array.isArray(lcRaw)) return null;
+  const nodeIndices = (lcRaw as unknown[]).filter(
+    (v): v is number => typeof v === "number"
+  );
+
+  const linearConversation: RawNode[] = nodeIndices
+    .map((i) => resolveNodeFromFlat(flat, i))
+    .filter((n): n is RawNode => n !== null);
+
+  // pageTitle is the conversation title shown in the browser tab
+  const ptIdx = flat.indexOf("pageTitle");
+  const title =
+    ptIdx > -1 && typeof flat[ptIdx + 1] === "string"
+      ? (flat[ptIdx + 1] as string)
+      : undefined;
+
+  // conversation_id: first UUID-shaped string in the flat array
+  const conversationId = (flat as unknown[]).find(
+    (v): v is string =>
+      typeof v === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
+  );
+
+  // model: first string matching a known model name pattern
+  const modelName = (flat as unknown[]).find(
+    (v): v is string =>
+      typeof v === "string" && /^(GPT|gpt-|o[0-9]|claude|gemini)/i.test(v)
+  );
+
+  // timestamps: smallest and largest plausible Unix seconds in the array
+  const tss = (flat as unknown[])
+    .filter(
+      (v): v is number =>
+        typeof v === "number" && v > 1_000_000_000 && v < 9_999_999_999
+    )
+    .sort((a, b) => a - b);
+
+  return {
+    title,
+    conversation_id: conversationId,
+    linear_conversation: linearConversation,
+    create_time: tss[0],
+    update_time: tss[tss.length - 1],
+    ...(modelName ? { model: { slug: modelName } } : {}),
+  };
+}
+
 // ── Message linearization ──────────────────────────────────────────────────────
 
 /**
@@ -387,12 +585,19 @@ export async function fetchChatGPTSharePage(url: string): Promise<string> {
  * Converts a raw conversation data object into a normalized Conversation.
  * Prefers linear_conversation over mapping; uses mapping as a fallback.
  */
-function assembleConversation(data: RawConvData, sourceUrl: string): Conversation {
+function assembleConversation(
+  data: RawConvData,
+  sourceUrl: string,
+  options?: { jsonPath?: string }
+): Conversation {
   let messages: ConversationMessage[] = [];
+  let rawCount = 0;
 
   if (Array.isArray(data.linear_conversation) && data.linear_conversation.length > 0) {
+    rawCount = data.linear_conversation.length;
     messages = normalizeFromLinear(data.linear_conversation);
   } else if (data.mapping && typeof data.mapping === "object") {
+    rawCount = Object.keys(data.mapping).length;
     messages = normalizeFromMapping(data.mapping);
   }
 
@@ -414,12 +619,12 @@ function assembleConversation(data: RawConvData, sourceUrl: string): Conversatio
       ? firstUserMsg.content.split("\n")[0].slice(0, 80).trim()
       : "Untitled ChatGPT Conversation";
 
-  // Optional metadata (model slug, timestamps)
+  // Optional metadata (model slug, timestamps, extraction diagnostics)
   const metadata: Record<string, string | number | boolean> = {};
-  if (typeof data.create_time === "number") {
+  if (typeof data.create_time === "number" && data.create_time > 0) {
     metadata["created"] = new Date(data.create_time * 1000).toISOString();
   }
-  if (typeof data.update_time === "number") {
+  if (typeof data.update_time === "number" && data.update_time > 0) {
     metadata["updated"] = new Date(data.update_time * 1000).toISOString();
   }
   if (data.model && typeof data.model === "object" && data.model.slug) {
@@ -428,6 +633,9 @@ function assembleConversation(data: RawConvData, sourceUrl: string): Conversatio
   if (data.conversation_id) {
     metadata["conversationId"] = String(data.conversation_id);
   }
+  // Extraction diagnostics
+  if (options?.jsonPath) metadata["chatgptJsonPath"] = options.jsonPath;
+  if (rawCount > 0) metadata["filteredMessageCount"] = rawCount - messages.length;
 
   return {
     provider: "chatgpt",
@@ -490,12 +698,13 @@ export class ChatGPTAdapter implements ProviderAdapter {
    * Steps:
    *   1. Validate URL with isShareableUrl()
    *   2. Fetch the share page HTML
-   *   3. Parse __NEXT_DATA__ JSON from the embedded script tag
-   *   4. Find conversation data in the JSON (tries 4 known path variations)
-   *   5. Linearize messages (from linear_conversation[] or mapping tree)
-   *   6. Filter: keep only user/assistant text messages
-   *   7. Normalize to ConversationMessage[]
-   *   8. Assemble and return Conversation
+   *   3. Parse conversation data — tries two formats in order:
+   *        a. React Router 7 flat-reference stream (current ChatGPT)
+   *        b. Legacy Next.js __NEXT_DATA__ (fallback for cached/older pages)
+   *   4. Linearize messages (from linear_conversation[] or mapping tree)
+   *   5. Filter: keep only user/assistant text messages
+   *   6. Normalize to ConversationMessage[]
+   *   7. Assemble and return Conversation
    *
    * @throws InvalidShareUrlError  — URL is not a valid share link
    * @throws ExtractionError       — network failure, page structure changed, etc.
@@ -529,31 +738,41 @@ export class ChatGPTAdapter implements ProviderAdapter {
       // ── Step 2: Fetch HTML ─────────────────────────────────────────────────
       const html = await fetchChatGPTSharePage(url);
 
-      // ── Step 3: Parse __NEXT_DATA__ ───────────────────────────────────────
-      const nextData = parseNextDataScript(html);
-      if (!nextData) {
-        throw new ExtractionError(
-          this.name,
-          url,
-          "__NEXT_DATA__ script tag not found in the page HTML. " +
-            "ChatGPT may have changed their page structure. " +
-            "Alternatively, the page may have rendered a login redirect instead of the conversation."
-        );
+      // ── Step 3: Parse conversation data (RR7 primary → __NEXT_DATA__ fallback) ──
+      let convData: RawConvData | null = null;
+      let jsonPath = "";
+
+      // Primary: React Router 7 flat-reference stream (ChatGPT ~2025-present)
+      convData = parseReactRouterStream(html);
+      if (convData) {
+        jsonPath =
+          "react-router-7/streamController.enqueue/linear_conversation";
+      } else {
+        // Fallback: Next.js __NEXT_DATA__ (ChatGPT before ~2025)
+        const nextData = parseNextDataScript(html);
+        if (nextData) {
+          const found = findConversationData(nextData);
+          if (found) {
+            convData = found;
+            jsonPath = "__NEXT_DATA__/props.pageProps";
+          }
+        }
       }
 
-      // ── Step 4: Find conversation payload ─────────────────────────────────
-      const convData = findConversationData(nextData);
       if (!convData) {
         throw new ExtractionError(
           this.name,
           url,
-          "Could not locate conversation data in __NEXT_DATA__. " +
-            "The JSON path may have changed — check the CHATGPT_EXTRACTION_REPORT.md for known paths."
+          "Could not locate conversation data. " +
+            "Neither the React Router 7 stream format (window.__reactRouterContext) " +
+            "nor the legacy __NEXT_DATA__ format was found. " +
+            "ChatGPT may have changed their page structure — " +
+            "check docs/CHATGPT_EXTRACTION_TEST_RESULTS.md for the latest known format."
         );
       }
 
-      // ── Steps 5–8: Normalize and return ──────────────────────────────────
-      return assembleConversation(convData, url);
+      // ── Steps 4–7: Normalize and return ──────────────────────────────────
+      return assembleConversation(convData, url, { jsonPath });
     } catch (err) {
       // Re-throw typed errors unchanged; wrap unexpected errors
       if (

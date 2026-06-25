@@ -18,29 +18,35 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const documentId = body.documentId || "doc-001";
 
-    // Find the requested document
-    const doc: ConversationDocument | undefined = mockDocuments.find(
-      (d) => d.id === documentId
-    );
+    let doc: ConversationDocument | undefined;
 
-    if (!doc) {
-      return NextResponse.json(
-        { error: "Document not found", availableIds: mockDocuments.map((d) => d.id) },
-        { status: 404 }
-      );
+    if (
+      typeof body.content !== "string" ||
+      body.content.trim().length === 0
+    ) {
+      doc = mockDocuments.find((d) => d.id === documentId);
+
+      if (!doc) {
+        return NextResponse.json(
+          {
+            error: "Document not found",
+            availableIds: mockDocuments.map((d) => d.id),
+          },
+          { status: 404 }
+        );
+      }
     }
-
     // content override: when the client sends filtered markdown (e.g. "show code
     // only" mode), use that instead of the full renderedMarkdown so the PDF
     // matches exactly what the user saw in the preview.
     const content: string =
       typeof body.content === "string" && body.content.trim().length > 0
         ? body.content
-        : doc.renderedMarkdown;
+        : doc!.renderedMarkdown;
 
     // Generate PDF with the provided options
     const pdfResult = await generatePdf({
-      title: doc.title,
+      title: body.title || doc?.title || "Chat Export",
       content,
       fontSize: body.options?.fontSize ?? 12,
       margins: body.options?.margins ?? "standard",
@@ -51,7 +57,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Build filename
-    const sanitizedTitle = doc.title
+    const sanitizedTitle = (body.title || doc?.title || "chat-export")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "")
@@ -73,9 +79,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: unknown) {
     console.error("PDF generation failed:", error);
-    
+
     const message = error instanceof Error ? error.message : "Unknown error";
-    
+
     return NextResponse.json(
       {
         error: "Failed to generate PDF",

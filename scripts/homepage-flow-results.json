@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-06-24T17:13:46.429Z",
+  "phase": "Phase 2 — Homepage Wiring",
+  "endpoint": "http://localhost:3000/api/extract",
+  "real_url": "https://chatgpt.com/share/6a3b9a96-b39c-83ee-b869-1b4279145496",
+  "elapsed_ms": 1187,
+  "document_summary": {
+    "id": "conv-1db333df",
+    "title": "Math Question Answered",
+    "provider": "chatgpt",
+    "model": "gpt-5-5",
+    "message_count": 6,
+    "word_count": 154,
+    "rendered_markdown_chars": 845
+  },
+  "assertions": {
+    "passed": 44,
+    "failed": 0
+  }
+}

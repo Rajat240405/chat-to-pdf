@@ -10,9 +10,21 @@ export default function ProcessingPage() {
   const router = useRouter();
 
   useEffect(() => {
+    // If the extraction already completed (homepage wrote the document to
+    // sessionStorage), show the processing animation briefly then redirect.
+    // Otherwise keep the full 10-second mock-processing delay.
+    let delay = 10000;
+    try {
+      if (sessionStorage.getItem("chat2pdf_current_doc")) {
+        delay = 1500;
+      }
+    } catch {
+      // sessionStorage unavailable — use the default delay
+    }
+
     const timer = setTimeout(() => {
       router.push("/preview");
-    }, 10000);
+    }, delay);
 
     return () => clearTimeout(timer);
   }, [router]);

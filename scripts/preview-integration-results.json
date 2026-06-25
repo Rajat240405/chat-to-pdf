@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-06-24T17:25:26.581Z",
+  "phase": "Phase 3+4 — Processing + Preview Integration",
+  "real_url": "https://chatgpt.com/share/6a3b9a96-b39c-83ee-b869-1b4279145496",
+  "document_summary": {
+    "id": "conv-1db333df",
+    "title": "Math Question Answered",
+    "provider": "chatgpt",
+    "model": "gpt-5-5",
+    "messages": 6,
+    "word_count": 154,
+    "rendered_markdown_chars": 845
+  },
+  "assertions": {
+    "passed": 43,
+    "failed": 0
+  }
+}

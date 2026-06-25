@@ -92,7 +92,32 @@ export default function PreviewPage() {
   // Quick export state — lifted here so we can include filteredContent in body
   const [isExporting, setIsExporting] = useState(false);
 
-  const activeDoc: ConversationDocument = mockDocuments[activeDocIndex];
+  // ── Real extracted document ────────────────────────────────────────────────
+  // Written to sessionStorage by the homepage after POST /api/extract succeeds.
+  // Falls back to mockDocuments when no extraction has been run.
+  const [extractedDoc, setExtractedDoc] = useState<ConversationDocument | null>(null);
+  const [storageChecked, setStorageChecked] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem("chat2pdf_current_doc");
+
+      if (stored) {
+        const parsed = JSON.parse(stored) as ConversationDocument;
+        setExtractedDoc(parsed);
+      }
+    } catch {
+      // sessionStorage unavailable
+    } finally {
+      setStorageChecked(true);
+    }
+  }, []);
+
+
+
+  // Active document: real extracted doc when available, otherwise mock data
+  const activeDoc: ConversationDocument = extractedDoc ?? mockDocuments[activeDocIndex];
+
 
   // Persist the active document ID to sessionStorage whenever it changes.
   // The export page reads this so it always exports the document the user is
@@ -127,6 +152,8 @@ export default function PreviewPage() {
       // degrade silently
     }
   }, [filteredContent, hidePrompts, showCodeOnly, systemMessages]);
+
+
 
   const handleQuickExport = useCallback(async () => {
     setIsExporting(true);
@@ -173,6 +200,14 @@ export default function PreviewPage() {
     }
   }, [activeDoc, filteredContent, hidePrompts, showCodeOnly, systemMessages]);
 
+  if (!storageChecked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <Header showExport />
@@ -182,16 +217,19 @@ export default function PreviewPage() {
           <div className="flex items-center gap-3">
             <FileText className="h-4 w-4 text-gray-400" />
             <span className="text-sm font-medium text-gray-900">{activeDoc.title}</span>
-            <button
-              id="btn-doc-switcher"
-              onClick={() => setShowDocSwitcher(!showDocSwitcher)}
-              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-            >
-              <ChevronDown className="h-4 w-4" />
-            </button>
+            {/* Document switcher only shown when using mock data (no extracted doc present) */}
+            {!extractedDoc && (
+              <button
+                id="btn-doc-switcher"
+                onClick={() => setShowDocSwitcher(!showDocSwitcher)}
+                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
-          {showDocSwitcher && (
+          {!extractedDoc && showDocSwitcher && (
             <div className="absolute left-16 top-full mt-1 w-80 rounded-lg border border-gray-200 bg-white shadow-lg">
               <div className="p-2">
                 {mockDocuments.map((doc, idx) => (
@@ -206,11 +244,10 @@ export default function PreviewPage() {
                       setShowCodeOnly(false);
                       setSystemMessages(true);
                     }}
-                    className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors ${
-                      activeDocIndex === idx
-                        ? "bg-blue-50 text-blue-700"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
+                    className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors ${activeDocIndex === idx
+                      ? "bg-blue-50 text-blue-700"
+                      : "text-gray-700 hover:bg-gray-50"
+                      }`}
                   >
                     <FileText className="h-4 w-4 shrink-0" />
                     <div className="min-w-0 flex-1">
@@ -285,8 +322,8 @@ export default function PreviewPage() {
                   {activeDoc.provider === "chatgpt"
                     ? "OpenAI API"
                     : activeDoc.provider === "claude"
-                    ? "Anthropic API"
-                    : "Google DeepMind"}
+                      ? "Anthropic API"
+                      : "Google DeepMind"}
                 </div>
                 <a
                   href={activeDoc.url}

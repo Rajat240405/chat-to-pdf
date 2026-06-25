@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import {
@@ -9,13 +10,70 @@ import {
   FileOutput,
   Code2,
   Database,
-  ArrowRight,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import { mockGalleryDocuments } from "@/lib/mock-data";
 
 export default function LandingPage() {
+  const router = useRouter();
   const [url, setUrl] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Calls POST /api/extract with the current URL value.
+   * On success: stores the ConversationDocument in sessionStorage
+   * and navigates to /processing.
+   * On failure: displays an inline error message.
+   */
+  const handleConvert = useCallback(async () => {
+    const trimmed = url.trim();
+    if (!trimmed) {
+      setError("Please paste a share link before converting.");
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: trimmed }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        const msg =
+          (json && typeof json.error === "string" ? json.error : null) ??
+          `Extraction failed (HTTP ${res.status}). Please check the URL and try again.`;
+        setError(msg);
+        return;
+      }
+      if (!json?.document) {
+        setError("Unexpected response from server. Please try again.");
+        return;
+      }
+      // Store the document so the preview/export pages can consume it
+      try {
+        sessionStorage.setItem(
+          "chat2pdf_current_doc",
+          JSON.stringify(json.document)
+        );
+      } catch {
+        // sessionStorage unavailable (private browsing) — proceed anyway
+        // Preview will fall back to mock data
+      }
+      router.push("/processing");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Network error. Please check your connection and try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [url, router]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -33,19 +91,43 @@ export default function LandingPage() {
 
         <div className="mt-8 flex w-full max-w-xl flex-col gap-3 sm:flex-row">
           <input
+            id="url-input"
             type="text"
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            onChange={(e) => { setUrl(e.target.value); setError(null); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && !isLoading) handleConvert(); }}
             placeholder="Paste your ChatGPT, Claude, or Gemini link here..."
-            className="flex-1 rounded-md border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            disabled={isLoading}
+            aria-label="Share URL input"
+            className="flex-1 rounded-md border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
           />
-          <Link
-            href="/processing"
-            className="inline-flex items-center justify-center rounded-md bg-black px-6 py-3 text-sm font-medium text-white hover:bg-gray-800 transition-colors"
+          <button
+            id="btn-start-converting"
+            onClick={handleConvert}
+            disabled={isLoading}
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-black px-6 py-3 text-sm font-medium text-white hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Start Converting
-          </Link>
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Extracting…
+              </>
+            ) : (
+              "Start Converting"
+            )}
+          </button>
         </div>
+
+        {/* Inline error — shown below the input row */}
+        {error && (
+          <p
+            id="url-error"
+            role="alert"
+            className="mt-2 max-w-xl text-center text-sm text-red-600"
+          >
+            {error}
+          </p>
+        )}
 
         <div className="mt-6 flex items-center gap-6 text-xs font-medium text-gray-400">
           <div className="flex items-center gap-1.5">
@@ -208,12 +290,13 @@ export default function LandingPage() {
           Stop copying and pasting manually. Build your documentation library in seconds.
         </p>
         <div className="mt-8 flex items-center justify-center gap-4">
-          <Link
-            href="/processing"
+          <button
+            id="btn-get-started"
+            onClick={() => { window.scrollTo({ top: 0, behavior: "smooth" }); }}
             className="inline-flex items-center justify-center rounded-md bg-black px-6 py-3 text-sm font-medium text-white hover:bg-gray-800 transition-colors"
           >
             Get Started Free
-          </Link>
+          </button>
           <button className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-6 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
             Enterprise Sales
           </button>

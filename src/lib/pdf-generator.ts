@@ -34,6 +34,10 @@ export interface PdfGenerationOptions {
   showTimestamps?: boolean;
 }
 
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export interface PdfResult {
   /** Raw PDF buffer for streaming/download */
   buffer: Buffer;
@@ -63,6 +67,7 @@ export async function generatePdf(options: PdfGenerationOptions): Promise<PdfRes
   // replacing the hand-rolled customRenderMarkdown() that previously
   // lived in this file. See src/lib/markdown-to-html.ts.
   const htmlBody = await markdownToHtml(content);
+  console.log(htmlBody);
 
   // Step 2: Build complete PDF template HTML
   const fullHtml = buildPdfTemplate({
@@ -73,6 +78,8 @@ export async function generatePdf(options: PdfGenerationOptions): Promise<PdfRes
     orientationClass: orientation === "landscape" ? "orientation-landscape" : "",
     darkModeClass: darkMode ? "dark-mode" : "",
     includeLogo,
+    provider: "ChatGPT",
+    model: "GPT-5.5",
     generatedAt: new Date().toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
@@ -102,7 +109,7 @@ export async function generatePdf(options: PdfGenerationOptions): Promise<PdfRes
     }
 
     const pdfBuffer = fs.readFileSync(pdfPath);
-    
+
     // Estimate page count based on content characteristics
     const estimatedPages = estimatePageCount(content, orientation);
 
@@ -188,11 +195,26 @@ async function runPuppeteerConversion(
       format: "A4",
       margin: { top: "5mm", bottom: "5mm", left: "5mm", right: "5mm" },
       printBackground: true,
-      displayHeaderFooter: false,
+      displayHeaderFooter: true,
       preferCSSPageSize: true,
       scale: 1.0,
-      headerTemplate: "<div></div>",
-      footerTemplate: "<div></div>",
+
+      headerTemplate: `
+  <div style="width:100%;"></div>
+  `,
+
+      footerTemplate: `
+  <div style="
+    width:100%;
+    padding:0 20px;
+    font-size:9px;
+    color:#6b7280;
+    text-align:center;
+  ">
+    Page <span class="pageNumber"></span> of
+    <span class="totalPages"></span>
+  </div>
+  `,
     });
 
     // Write output
@@ -246,6 +268,9 @@ interface TemplateVars {
   darkModeClass: string;
   includeLogo: boolean;
   generatedAt: string;
+
+  provider?: string;
+  model?: string;
 }
 
 const PDF_CSS = `
@@ -276,7 +301,24 @@ tbody tr:nth-child(even) { background-color: #fafafa; }
 blockquote { margin: 14pt 0; padding: 10pt 16pt; border-left: 4px solid #2563eb; background-color: #eff6ff; color: #1e40af; orphans: 2; widows: 2; page-break-inside: avoid; }
 blockquote p:last-child { margin-bottom: 0; }
 blockquote pre { color: #1e40af; background-color: rgba(255,255,255,0.6); }
-pre { margin: 14pt 0; padding: 12pt 14pt; background-color: #1e293b; color: #e2e8f0; border-radius: 6px; font-family: 'JetBrains Mono','SF Mono',Monaco,'Cascadia Code',Consolas,monospace; font-size: 9pt; line-height: 1.55; overflow-x: auto; white-space: pre; word-wrap: normal; tab-size: 2; page-break-inside: avoid !important; orphans: 4 !important; widows: 4 !important; }
+pre {
+  margin: 14pt 0;
+  padding: 12pt 14pt;
+  background-color: #1e293b;
+  color: #e2e8f0;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono','SF Mono',Monaco,'Cascadia Code',Consolas,monospace;
+  font-size: 9pt;
+  line-height: 1.55;
+  overflow-x: auto;
+  white-space: pre;
+  word-wrap: normal;
+  tab-size: 2;
+  page-break-inside: auto;
+  break-inside: auto;
+  orphans: 4 !important;
+  widows: 4 !important;
+}
 code { font-family: 'JetBrains Mono','SF Mono',Monaco,'Cascadia Code',Consolas,monospace; font-size: 0.88em; }
 p code, li code, td code, th code:not(pre code) { background-color: #f3f4f6; color: #dc2626; padding: 2pt 5pt; border-radius: 3pt; font-size: 0.9em; }
 /* === Syntax highlighting — highlight.js token colours ===
@@ -300,7 +342,7 @@ del { text-decoration: line-through; color: #6b7280; }
 .task-list-item input[type="checkbox"] { margin-right: 6pt; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 hr { border: none; border-top: 2px dashed #d1d5db; margin: 20pt 0; page-break-after: avoid; }
 h1,h2,h3{page-break-after:avoid}
-ul,ol,tr,blockquote,pre,figure,img{page-break-inside:avoid}
+ul,ol,tr,blockquote,figure,img{page-break-inside:avoid}
 table{border-collapse:collapse;width:100%}
 .pdf-footer{margin-top:30pt;padding-top:12pt;border-top:1px solid #e5e7eb;font-size:8pt;color:#9ca3af;text-align:center;page-break-inside:avoid}
 @page:first{margin-top:15mm}
@@ -315,7 +357,7 @@ body.dark-mode blockquote{border-color:#3b82f6;background-color:#172554;color:#9
 
 function buildPdfTemplate(vars: TemplateVars): string {
   let css = PDF_CSS.replace("$FONT_SIZE", String(vars.fontSize));
-  
+
   // Build HTML using string concatenation to avoid template literal escaping issues
   const lines: string[] = [];
   var bodyClasses = [vars.marginClass, vars.orientationClass, vars.darkModeClass].filter(Boolean).join(" ");
@@ -347,8 +389,27 @@ function buildPdfTemplate(vars: TemplateVars): string {
     );
   }
 
-  lines.push("  <h1>" + escapeHtml(vars.title) + "</h1>");
-  lines.push("  <div class='markdown-body'>" + vars.bodyContent + "</div>");
+  lines.push(`
+<div class="pdf-hero">
+  <div class="pdf-hero-title">
+    ${escapeHtml(vars.title)}
+  </div>
+
+  <div class="pdf-meta-row">
+    ${vars.provider ?? "Unknown"} •
+    ${vars.model ?? "Unknown"} •
+    ${vars.generatedAt}
+  </div>
+</div>
+`);
+  const cleanedBody = vars.bodyContent.replace(
+    new RegExp(`^<h1>${escapeRegExp(vars.title)}</h1>\\s*`, "i"),
+    ""
+  );
+
+  lines.push("  <div class='markdown-body'>" + cleanedBody + "</div>");
+
+
 
   lines.push(
     "  <div class='pdf-footer'>" +

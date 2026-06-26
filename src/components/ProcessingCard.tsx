@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, X } from "lucide-react";
 import { mockProcessingSteps } from "@/lib/mock-data";
 
-export default function ProcessingCard() {
+interface ProcessingCardProps {
+  autoRedirect?: boolean;
+}
+
+export default function ProcessingCard({
+  autoRedirect = true,
+}: ProcessingCardProps) {
   const router = useRouter();
   const [progress, setProgress] = useState(0);
   const [steps, setSteps] = useState(mockProcessingSteps);
@@ -28,7 +34,7 @@ export default function ProcessingCard() {
 
   // When progress hits 100: mark all steps completed, then redirect
   useEffect(() => {
-    if (progress >= 100 && !done) {
+    if (progress >= 100 && !done && autoRedirect) {
       setDone(true);
       // Mark the last active step as completed so the UI shows ✓ before redirect
       setSteps((prev) =>
@@ -38,7 +44,15 @@ export default function ProcessingCard() {
       );
       // 1 s delay lets the user see 100 % and green checkmarks before navigating
       const timer = setTimeout(() => {
-        router.push("/preview");
+        try {
+          const stored = sessionStorage.getItem("chat2pdf_current_doc");
+
+          if (stored) {
+            router.push("/preview");
+          }
+        } catch {
+          router.push("/preview");
+        }
       }, 1000);
       return () => clearTimeout(timer);
     }
@@ -73,9 +87,8 @@ export default function ProcessingCard() {
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
           <div
-            className={`h-full rounded-full transition-all duration-300 ease-out ${
-              done ? "bg-emerald-500" : "bg-blue-600"
-            }`}
+            className={`h-full rounded-full transition-all duration-300 ease-out ${done ? "bg-emerald-500" : "bg-blue-600"
+              }`}
             style={{ width: `${Math.min(progress, 100)}%` }}
           />
         </div>
@@ -96,13 +109,12 @@ export default function ProcessingCard() {
             </div>
             {step.detail && (
               <span
-                className={`rounded-md px-2.5 py-1 text-xs font-medium ${
-                  step.status === "completed"
-                    ? "bg-gray-100 text-gray-600"
-                    : step.status === "active"
+                className={`rounded-md px-2.5 py-1 text-xs font-medium ${step.status === "completed"
+                  ? "bg-gray-100 text-gray-600"
+                  : step.status === "active"
                     ? "bg-blue-50 text-blue-600"
                     : "bg-gray-50 text-gray-400"
-                }`}
+                  }`}
               >
                 {step.status === "active" && (
                   <span className="mr-1 inline-flex">

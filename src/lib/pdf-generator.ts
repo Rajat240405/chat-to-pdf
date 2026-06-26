@@ -66,8 +66,18 @@ export async function generatePdf(options: PdfGenerationOptions): Promise<PdfRes
   // Uses the shared unified/remark/rehype pipeline (markdownToHtml)
   // replacing the hand-rolled customRenderMarkdown() that previously
   // lived in this file. See src/lib/markdown-to-html.ts.
-  const htmlBody = await markdownToHtml(content);
-  console.log(htmlBody);
+  let htmlBody = await markdownToHtml(content);
+
+  htmlBody = htmlBody.replace(
+    /<pre><code class="hljs language-([a-zA-Z0-9_-]+)">([\s\S]*?)<\/code><\/pre>/g,
+    (_match, lang, code) => `
+<div class="code-block-container">
+  <div class="code-language-badge">${lang.toUpperCase()}</div>
+  <pre><code class="hljs language-${lang}">${code}</code></pre>
+</div>
+`
+  );
+
 
   // Step 2: Build complete PDF template HTML
   const fullHtml = buildPdfTemplate({
@@ -80,6 +90,7 @@ export async function generatePdf(options: PdfGenerationOptions): Promise<PdfRes
     includeLogo,
     provider: "ChatGPT",
     model: "GPT-5.5",
+    messageCount: content.match(/\*\*(User|Assistant)\*\*/g)?.length ?? 0,
     generatedAt: new Date().toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
@@ -87,6 +98,7 @@ export async function generatePdf(options: PdfGenerationOptions): Promise<PdfRes
       hour: "2-digit",
       minute: "2-digit",
     }),
+
   });
 
   // Step 3: Write temp file and use Puppeteer to generate PDF
@@ -260,6 +272,7 @@ function estimatePageCount(content: string, orientation: "portrait" | "landscape
 }
 
 interface TemplateVars {
+  messageCount: number;
   bodyContent: string;
   title: string;
   fontSize: number;
@@ -273,87 +286,11 @@ interface TemplateVars {
   model?: string;
 }
 
-const PDF_CSS = `
-/* === A4 Print Layout === */
-@page { size: A4; margin: 20mm 18mm; }
-* { box-sizing: border-box; }
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: $FONT_SIZEpt; line-height: 1.65; color: #111827; background: white;
-  margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
-}
-.pdf-document { max-width: 100%; padding: 0; }
-h1 { font-size: 24pt; font-weight: 700; color: #111827; margin-top: 0; margin-bottom: 16pt; padding-bottom: 8pt; border-bottom: 2px solid #e5e7eb; page-break-after: avoid; orphans: 3; widows: 3; }
-h2 { font-size: 17pt; font-weight: 600; color: #111827; margin-top: 28pt; margin-bottom: 10pt; padding-bottom: 5pt; border-bottom: 1px solid #e5e7eb; page-break-after: avoid; orphans: 3; widows: 3; }
-h3 { font-size: 14pt; font-weight: 600; color: #1f2937; margin-top: 18pt; margin-bottom: 8pt; page-break-after: avoid; orphans: 2; widows: 2; }
-p { margin-top: 0; margin-bottom: 10pt; text-align: justify; hyphens: auto; orphans: 2; widows: 2; }
-a { color: #2563eb; text-decoration: none; }
-a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 9pt; color: #6b7280; word-break: break-all; }
-ul, ol { margin-top: 8pt; margin-bottom: 12pt; padding-left: 22pt; }
-li { margin-bottom: 4pt; orphans: 2; widows: 2; }
-ul ul, ol ol, ul ol, ol ul { margin-top: 4pt; margin-bottom: 4pt; }
-li > strong { color: #111827; font-weight: 600; }
-table { width: 100%; border-collapse: collapse; margin: 14pt 0; font-size: 10pt; page-break-inside: avoid; }
-thead { background-color: #f9fafb; }
-th { text-align: left; font-weight: 600; color: #111827; padding: 8pt 10pt; border: 1px solid #e5e7eb; vertical-align: top; }
-td { padding: 7pt 10pt; border: 1px solid #e5e7eb; color: #374151; vertical-align: top; }
-tbody tr:nth-child(even) { background-color: #fafafa; }
-blockquote { margin: 14pt 0; padding: 10pt 16pt; border-left: 4px solid #2563eb; background-color: #eff6ff; color: #1e40af; orphans: 2; widows: 2; page-break-inside: avoid; }
-blockquote p:last-child { margin-bottom: 0; }
-blockquote pre { color: #1e40af; background-color: rgba(255,255,255,0.6); }
-pre {
-  margin: 14pt 0;
-  padding: 12pt 14pt;
-  background-color: #1e293b;
-  color: #e2e8f0;
-  border-radius: 6px;
-  font-family: 'JetBrains Mono','SF Mono',Monaco,'Cascadia Code',Consolas,monospace;
-  font-size: 9pt;
-  line-height: 1.55;
-  overflow-x: auto;
-  white-space: pre;
-  word-wrap: normal;
-  tab-size: 2;
-  page-break-inside: auto;
-  break-inside: auto;
-  orphans: 4 !important;
-  widows: 4 !important;
-}
-code { font-family: 'JetBrains Mono','SF Mono',Monaco,'Cascadia Code',Consolas,monospace; font-size: 0.88em; }
-p code, li code, td code, th code:not(pre code) { background-color: #f3f4f6; color: #dc2626; padding: 2pt 5pt; border-radius: 3pt; font-size: 0.9em; }
-/* === Syntax highlighting — highlight.js token colours ===
-   Identical palette used in globals.css for the preview renderer.
-   markdownToHtml() emits <code class="hljs language-X"> inside bare
-   <pre> elements; no .code-block-wrapper wrapper div is generated. */
-.hljs{background:#1e293b;color:#e2e8f0}
-.hljs-keyword{color:#c084fc;font-weight:500}.hljs-built_in{color:#38bdf8}.hljs-type{color:#fb923c}.hljs-literal{color:#38bdf8}.hljs-number{color:#fb923c}.hljs-string{color:#4ade80}.hljs-regexp{color:#4ade80}.hljs-symbol{color:#c084fc}.hljs-class{color:#fb923c}.hljs-function{color:#60a5fa}.hljs-title{color:#60a5fa}.hljs-params{color:#e2e8f0}.hljs-comment{color:#64748b;font-style:italic}.hljs-doctag{color:#64748b;font-style:italic}.hljs-attr{color:#f97316}.hljs-attribute{color:#f97316}.hljs-variable{color:#e2e8f0}.hljs-bullet{color:#38bdf8}.hljs-name{color:#67e8f9}.hljs-tag{color:#67e8f9}.hljs-selector-tag{color:#fb923c}.hljs-selector-id{color:#60a5fa}.hljs-selector-class{color:#4ade80}.hljs-meta{color:#94a3b8}.hljs-operator{color:#e2e8f0}.hljs-punctuation{color:#94a3b8}.hljs-property{color:#60a5fa}.hljs-template-variable{color:#4ade80}.hljs-addition{background-color:#052e16;color:#86efac;display:inline-block;width:100%}.hljs-deletion{background-color:#450a0a;color:#fca5a5;display:inline-block;width:100%}.hljs-emphasis{font-style:italic}.hljs-strong{font-weight:700}
-/* === New elements emitted by markdownToHtml() pipeline === */
-/* Images — markdownToHtml correctly produces <img> for ![alt](url);
-   customRenderMarkdown() previously dropped images silently. */
-img { max-width: 100%; height: auto; display: block; margin: 12pt auto; page-break-inside: avoid; }
-/* Strikethrough — markdownToHtml produces <del>; old parser emitted
-   raw ~~text~~ characters. */
-del { text-decoration: line-through; color: #6b7280; }
-/* Task lists — markdownToHtml produces .contains-task-list and
-   .task-list-item with <input type="checkbox" disabled>.
-   Old parser rendered [ ] / [x] as literal text characters. */
-.contains-task-list { list-style: none; padding-left: 0; }
-.task-list-item { padding-left: 0; }
-.task-list-item input[type="checkbox"] { margin-right: 6pt; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-hr { border: none; border-top: 2px dashed #d1d5db; margin: 20pt 0; page-break-after: avoid; }
-h1,h2,h3{page-break-after:avoid}
-ul,ol,tr,blockquote,figure,img{page-break-inside:avoid}
-table{border-collapse:collapse;width:100%}
-.pdf-footer{margin-top:30pt;padding-top:12pt;border-top:1px solid #e5e7eb;font-size:8pt;color:#9ca3af;text-align:center;page-break-inside:avoid}
-@page:first{margin-top:15mm}
-body.margin-narrow@page{margin:12mm 10mm!important}
-body.orientation-landscape@page{size:A4 landscape!important}
-body.dark-mode body{background-color:#0f172a;color:#e2e8f0}
-body.dark-mode pre{background-color:#020617;border-color:#334155}
-body.dark-mode th,body.dark-mode td{border-color:#334155;color:#cbd5e1}
-body.dark-mode h1,body.dark-mode h2,body.dark-mode h3{color:#f1f5f9;border-color:#334155}
-body.dark-mode blockquote{border-color:#3b82f6;background-color:#172554;color:#93c5fd}
-`;
+const PDF_CSS = fs.readFileSync(
+  path.join(process.cwd(), "src/lib/pdf-styles.css"),
+  "utf8"
+);
+
 
 function buildPdfTemplate(vars: TemplateVars): string {
   let css = PDF_CSS.replace("$FONT_SIZE", String(vars.fontSize));
@@ -396,10 +333,11 @@ function buildPdfTemplate(vars: TemplateVars): string {
   </div>
 
   <div class="pdf-meta-row">
-    ${vars.provider ?? "Unknown"} •
-    ${vars.model ?? "Unknown"} •
-    ${vars.generatedAt}
-  </div>
+  ${vars.provider ?? "Unknown"} •
+  ${vars.model ?? "Unknown"} •
+  ${vars.messageCount ?? 0} messages •
+  ${vars.generatedAt}
+</div>
 </div>
 `);
   const cleanedBody = vars.bodyContent.replace(
@@ -407,7 +345,15 @@ function buildPdfTemplate(vars: TemplateVars): string {
     ""
   );
 
-  lines.push("  <div class='markdown-body'>" + cleanedBody + "</div>");
+  lines.push(`
+  <hr class="conversation-start-divider">
+
+  <div class="chat-transcript">
+    <div class="markdown-body">
+      ${cleanedBody}
+    </div>
+  </div>
+`);
 
 
 

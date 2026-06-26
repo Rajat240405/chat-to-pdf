@@ -48,9 +48,9 @@ export interface DocumentMetadata {
 // ============================================================
 
 export const mockProcessingSteps: ProcessingStep[] = [
-  { id: "detect", label: "Detecting Provider", status: "completed", detail: "Claude 3.5 Sonnet detected" },
-  { id: "auth", label: "Authenticating Link", status: "completed", detail: "Token Accepted" },
-  { id: "parse", label: "Parsing Conversation Blocks", status: "completed", detail: "14 nodes mapped" },
+  { id: "detect", label: "Detecting Provider", status: "completed", detail: "Provider detected" },
+  { id: "auth", label: "Authenticating Link", status: "completed", detail: "Link validated" },
+  { id: "parse", label: "Parsing Conversation Blocks", status: "completed", detail: "Conversation parsed" },
   { id: "render", label: "Rendering Markdown", status: "completed", detail: "Success" },
   { id: "optimize", label: "Optimizing PDF Layout", status: "active", detail: "Active" },
 ];

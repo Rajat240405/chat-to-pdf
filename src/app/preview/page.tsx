@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+
 import Header from "@/components/Header";
 import PreviewSidebar from "@/components/PreviewSidebar";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
@@ -81,6 +82,7 @@ function applyFilters(
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function PreviewPage() {
+  console.time("preview-init");
   const [activeDocIndex, setActiveDocIndex] = useState(0);
   const [showDocSwitcher, setShowDocSwitcher] = useState(false);
 
@@ -99,19 +101,19 @@ export default function PreviewPage() {
   const [storageChecked, setStorageChecked] = useState(false);
 
   useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem("chat2pdf_current_doc");
+  try {
+    const stored = sessionStorage.getItem("chat2pdf_current_doc");
 
-      if (stored) {
-        const parsed = JSON.parse(stored) as ConversationDocument;
-        setExtractedDoc(parsed);
-      }
-    } catch {
-      // sessionStorage unavailable
-    } finally {
-      setStorageChecked(true);
+    if (stored) {
+      const parsed = JSON.parse(stored) as ConversationDocument;
+      setExtractedDoc(parsed);
     }
-  }, []);
+  } catch (e) {
+    console.error(e);
+  } finally {
+    setStorageChecked(true);
+  }
+}, []);
 
 
 
@@ -156,10 +158,17 @@ export default function PreviewPage() {
 
 
   const handleQuickExport = useCallback(async () => {
+    console.log({
+      activeDocId: activeDoc.id,
+      activeDocTitle: activeDoc.title,
+      sendingFilteredContent:
+        hidePrompts || showCodeOnly || !systemMessages,
+    });
     setIsExporting(true);
     try {
       const body: Record<string, unknown> = {
-        documentId: activeDoc.id,
+        title: activeDoc.title,
+        content: filteredContent,
         options: {
           fontSize: 12,
           margins: "standard",
@@ -200,10 +209,15 @@ export default function PreviewPage() {
     }
   }, [activeDoc, filteredContent, hidePrompts, showCodeOnly, systemMessages]);
 
+
+ 
+
   if (!storageChecked) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        Loading...
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="text-sm text-gray-500">
+          Preparing conversation preview...
+        </div>
       </div>
     );
   }

@@ -10,6 +10,10 @@ export default function ProcessingPage() {
   const router = useRouter();
 
   useEffect(() => {
+
+    
+
+    
     // If the extraction already completed (homepage wrote the document to
     // sessionStorage), show the processing animation briefly then redirect.
     // Otherwise keep the full 10-second mock-processing delay.
@@ -22,7 +26,12 @@ export default function ProcessingPage() {
       // sessionStorage unavailable — use the default delay
     }
 
+
+    
+
     const timer = setTimeout(() => {
+
+      
       router.push("/preview");
     }, delay);
 

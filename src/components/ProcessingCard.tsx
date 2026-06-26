@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+
 import { CheckCircle2, Loader2, X } from "lucide-react";
 import { mockProcessingSteps } from "@/lib/mock-data";
 
@@ -12,7 +12,7 @@ interface ProcessingCardProps {
 export default function ProcessingCard({
   autoRedirect = true,
 }: ProcessingCardProps) {
-  const router = useRouter();
+  
   const [progress, setProgress] = useState(0);
   const [steps, setSteps] = useState(mockProcessingSteps);
   const [done, setDone] = useState(false);
@@ -43,20 +43,9 @@ export default function ProcessingCard({
         )
       );
       // 1 s delay lets the user see 100 % and green checkmarks before navigating
-      const timer = setTimeout(() => {
-        try {
-          const stored = sessionStorage.getItem("chat2pdf_current_doc");
-
-          if (stored) {
-            router.push("/preview");
-          }
-        } catch {
-          router.push("/preview");
-        }
-      }, 1000);
-      return () => clearTimeout(timer);
+      
     }
-  }, [progress, done, router]);
+  }, [progress, done]);
 
   return (
     <div className="mx-auto w-full max-w-xl rounded-lg border border-gray-200 bg-white p-8 shadow-sm">

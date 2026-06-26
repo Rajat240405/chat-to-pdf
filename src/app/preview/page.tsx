@@ -1,5 +1,5 @@
 "use client";
-
+import { getCurrentDocument } from "@/lib/current-document-store";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
@@ -82,7 +82,9 @@ function applyFilters(
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function PreviewPage() {
-  console.time("preview-init");
+
+  
+  
   const [activeDocIndex, setActiveDocIndex] = useState(0);
   const [showDocSwitcher, setShowDocSwitcher] = useState(false);
 
@@ -97,28 +99,40 @@ export default function PreviewPage() {
   // ── Real extracted document ────────────────────────────────────────────────
   // Written to sessionStorage by the homepage after POST /api/extract succeeds.
   // Falls back to mockDocuments when no extraction has been run.
-  const [extractedDoc, setExtractedDoc] = useState<ConversationDocument | null>(null);
+  const [extractedDoc, setExtractedDoc] =
+  useState<ConversationDocument | null>(() => getCurrentDocument());
+
   const [storageChecked, setStorageChecked] = useState(false);
 
   useEffect(() => {
+
+     
+  // Already available from the in-memory cache
+  
+  if (extractedDoc) {
+    setStorageChecked(true);
+    return;
+  }
+
   try {
     const stored = sessionStorage.getItem("chat2pdf_current_doc");
 
     if (stored) {
-      const parsed = JSON.parse(stored) as ConversationDocument;
-      setExtractedDoc(parsed);
+      setExtractedDoc(JSON.parse(stored));
     }
   } catch (e) {
     console.error(e);
   } finally {
     setStorageChecked(true);
   }
-}, []);
+}, [extractedDoc]);
 
 
 
   // Active document: real extracted doc when available, otherwise mock data
-  const activeDoc: ConversationDocument = extractedDoc ?? mockDocuments[activeDocIndex];
+ const activeDoc =
+  extractedDoc ??
+  (!storageChecked ? null : mockDocuments[activeDocIndex]);
 
 
   // Persist the active document ID to sessionStorage whenever it changes.

@@ -1,5 +1,5 @@
 "use client";
-
+import { setCurrentDocument } from "@/lib/current-document-store";
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -54,16 +54,19 @@ export default function LandingPage() {
         return;
       }
       // Store the document so the preview/export pages can consume it
-      try {
-        sessionStorage.setItem(
-          "chat2pdf_current_doc",
-          JSON.stringify(json.document)
-        );
-      } catch {
-        // sessionStorage unavailable (private browsing) — proceed anyway
-        // Preview will fall back to mock data
-      }
-      router.push("/processing");
+      // Fast in-memory handoff for Preview
+setCurrentDocument(json.document);
+
+// Persist as a fallback (refresh/new tab)
+try {
+  sessionStorage.setItem(
+    "chat2pdf_current_doc",
+    JSON.stringify(json.document)
+  );
+} catch {
+  // sessionStorage unavailable
+}
+router.push("/processing");
     } catch (err) {
       setError(
         err instanceof Error

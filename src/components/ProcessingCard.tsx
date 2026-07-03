@@ -45,7 +45,7 @@ export default function ProcessingCard({
       // 1 s delay lets the user see 100 % and green checkmarks before navigating
       
     }
-  }, [progress, done]);
+  }, [progress, done, autoRedirect]);
 
   return (
     <div className="mx-auto w-full max-w-xl rounded-lg border border-gray-200 bg-white p-8 shadow-sm">

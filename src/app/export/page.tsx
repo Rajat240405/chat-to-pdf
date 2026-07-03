@@ -145,7 +145,7 @@ export default function ExportPage() {
       // Reset status after delay
       setTimeout(() => setExportStatus("idle"), 4000);
     } catch (error) {
-      console.error("Export failed:", error);
+      
       setExportStatus("error");
       setExportMessage(
         error instanceof Error ? error.message : "Failed to generate PDF"

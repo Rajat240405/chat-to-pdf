@@ -121,7 +121,7 @@ export default function PreviewPage() {
       setExtractedDoc(JSON.parse(stored));
     }
   } catch (e) {
-    console.error(e);
+    
   } finally {
     setStorageChecked(true);
   }
@@ -132,21 +132,32 @@ export default function PreviewPage() {
   // Active document: real extracted doc when available, otherwise mock data
  const activeDoc =
   extractedDoc ??
-  (!storageChecked ? null : mockDocuments[activeDocIndex]);
+  (storageChecked ? mockDocuments[activeDocIndex] : null);
+
+if (!activeDoc) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="text-sm text-gray-500">
+        Preparing conversation preview...
+      </div>
+    </div>
+  );
+}
 
 
   // Persist the active document ID to sessionStorage whenever it changes.
   // The export page reads this so it always exports the document the user is
   // currently viewing, not the hardcoded "doc-001".
   useEffect(() => {
-    try {
-      sessionStorage.setItem("chat2pdf_active_doc_id", activeDoc.id);
-      // Also store the title for display on the export page
-      sessionStorage.setItem("chat2pdf_active_doc_title", activeDoc.title);
-    } catch {
-      // sessionStorage unavailable (SSR, private browsing) — degrade silently
-    }
-  }, [activeDoc.id, activeDoc.title]);
+  if (!activeDoc) return;
+
+  try {
+    sessionStorage.setItem("chat2pdf_active_doc_id", activeDoc.id);
+    sessionStorage.setItem("chat2pdf_active_doc_title", activeDoc.title);
+  } catch {
+    // Ignore sessionStorage failures
+  }
+}, [activeDoc]);
 
   // Compute the filtered content shown to MarkdownRenderer.
   // Re-computed synchronously on every render — cheap for markdown strings.
@@ -172,12 +183,7 @@ export default function PreviewPage() {
 
 
   const handleQuickExport = useCallback(async () => {
-    console.log({
-      activeDocId: activeDoc.id,
-      activeDocTitle: activeDoc.title,
-      sendingFilteredContent:
-        hidePrompts || showCodeOnly || !systemMessages,
-    });
+    
     setIsExporting(true);
     try {
       const body: Record<string, unknown> = {
@@ -217,7 +223,7 @@ export default function PreviewPage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      console.error("Quick export failed:", error);
+      
     } finally {
       setIsExporting(false);
     }

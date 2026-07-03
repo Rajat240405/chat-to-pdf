@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    console.error("PDF generation failed:", error);
+    
 
     const message = error instanceof Error ? error.message : "Unknown error";
 
@@ -123,7 +123,7 @@ export async function GET() {
       },
     });
   } catch (error: unknown) {
-    console.error("Sample PDF generation failed:", error);
+    
     return NextResponse.json(
       { error: "Sample PDF generation failed" },
       { status: 500 }

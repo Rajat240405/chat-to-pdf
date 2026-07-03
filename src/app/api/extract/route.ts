@@ -261,7 +261,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
     // Unknown error — log server-side, return generic message to client
-    console.error("[/api/extract] Unexpected error:", err);
+    
     return NextResponse.json(
       {
         error: "An unexpected error occurred during extraction.",

@@ -139,7 +139,7 @@ export default function PreviewSidebar({
                 aria-label="Toggle hide user prompts"
               >
                 <span
-                  className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform"
+                  className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm hover:shadow-md transition-transform"
                   style={knobStyle(hidePrompts)}
                 />
               </button>
@@ -154,7 +154,7 @@ export default function PreviewSidebar({
                 aria-label="Toggle show code only"
               >
                 <span
-                  className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform"
+                  className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm hover:shadow-md transition-transform"
                   style={knobStyle(showCodeOnly)}
                 />
               </button>
@@ -169,7 +169,7 @@ export default function PreviewSidebar({
                 aria-label="Toggle system messages"
               >
                 <span
-                  className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform"
+                  className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm hover:shadow-md transition-transform"
                   style={knobStyle(systemMessages)}
                 />
               </button>

@@ -60,7 +60,7 @@ setCurrentDocument(json.document);
 // Persist as a fallback (refresh/new tab)
 try {
   sessionStorage.setItem(
-    "chat2pdf_current_doc",
+    "promptpress_current_doc",
     JSON.stringify(json.document)
   );
 } catch {
@@ -85,7 +85,7 @@ router.push("/processing");
       {/* Hero Section */}
       <section className="flex flex-col items-center px-4 pt-16 pb-12 text-center">
         <h1 className="max-w-2xl text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
-          Turn AI Conversations into Technical Documentation.
+          Transform AI Conversations into Polished Documentation.
         </h1>
         <p className="mt-5 max-w-lg text-base text-gray-500">
           Instantly convert links from ChatGPT, Claude, and Gemini into professionally formatted,
@@ -99,7 +99,7 @@ router.push("/processing");
             value={url}
             onChange={(e) => { setUrl(e.target.value); setError(null); }}
             onKeyDown={(e) => { if (e.key === "Enter" && !isLoading) handleConvert(); }}
-            placeholder="Paste your ChatGPT, Claude, or Gemini link here..."
+            placeholder="Paste a ChatGPT share link..."
             disabled={isLoading}
             aria-label="Share URL input"
             className="flex-1 rounded-md border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
@@ -116,7 +116,7 @@ router.push("/processing");
                 Extracting…
               </>
             ) : (
-              "Start Converting"
+              "Convert Conversation"
             )}
           </button>
         </div>

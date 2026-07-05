@@ -1,4 +1,4 @@
-# Chat2PDF — Provider Adapter Architecture
+# PromptPress — Provider Adapter Architecture
 
 **Status:** Architecture complete · Detection validated (21/21) · TypeScript ✅  
 **Date:** 2026-06-24  

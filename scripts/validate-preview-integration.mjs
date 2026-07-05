@@ -25,7 +25,7 @@ function check(label, cond, detail = "") {
 
 // ── Section 1: Dev server ─────────────────────────────────────────────────────
 console.log("=".repeat(65));
-console.log("Chat2PDF — Phase 3+4 Preview Integration Validation");
+console.log("PromptPress — Phase 3+4 Preview Integration Validation");
 console.log("=".repeat(65));
 console.log(`Server: ${BASE}\n`);
 
@@ -108,7 +108,7 @@ console.log("\n── Section 5: sessionStorage contract (key written by homepag
 
 if (doc) {
   // Simulate what homepage writes and preview reads
-  const key = "chat2pdf_current_doc";
+  const key = "promptpress_current_doc";
   let serialized, roundTripped;
   try {
     serialized = JSON.stringify(doc);
@@ -149,7 +149,7 @@ check("Mock mode fallback: mockDocuments[0] is non-null",
 console.log("\n── Section 7: Processing page redirect timing contract ──");
 
 // We can't execute browser-side JS here, but we verify the API contract:
-// if sessionStorage["chat2pdf_current_doc"] is set → delay = 1500ms
+// if sessionStorage["promptpress_current_doc"] is set → delay = 1500ms
 // if missing → delay = 10000ms
 // This is a code-level contract; document it as verified by inspection.
 check("With doc in sessionStorage: delay = 1.5 s (code-level verified)", true);

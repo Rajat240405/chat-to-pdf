@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Chat2PDF — Turn AI Conversations into Technical Documentation",
-  description: "Instantly convert links from ChatGPT, Claude, and Gemini into professionally formatted, vector-ready PDF technical manuals and docs.",
+  title: "PromptPress — Turn AI Conversations into Technical Documentation",
+  description: "Convert ChatGPT conversations into clean, export-ready documentation. Save, organize, and export as PDF in seconds.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

@@ -1,5 +1,5 @@
 // ============================================================
-// Chat2PDF — Realistic Mock Conversation Data
+// PromptPress — Realistic Mock Conversation Data
 // ============================================================
 // These are simulated AI conversations from ChatGPT, Claude,
 // and Gemini that demonstrate comprehensive markdown support.

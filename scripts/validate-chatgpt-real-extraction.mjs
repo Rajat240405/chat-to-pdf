@@ -261,7 +261,7 @@ function codeLangs(t) { return [...new Set([...t.matchAll(/```(\w+)/g)].map(m =>
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 console.log("=".repeat(65));
-console.log("Chat2PDF — ChatGPT Real Extraction (React Router 7 Migration)");
+console.log("PromptPress — ChatGPT Real Extraction (React Router 7 Migration)");
 console.log("=".repeat(65));
 console.log(`URL: ${TARGET_URL}\n`);
 

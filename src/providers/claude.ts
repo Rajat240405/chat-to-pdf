@@ -1,4 +1,4 @@
-// Chat2PDF — Claude Provider Adapter
+// PromptPress — Claude Provider Adapter
 
 import type { ProviderAdapter, Conversation } from "./types";
 import {

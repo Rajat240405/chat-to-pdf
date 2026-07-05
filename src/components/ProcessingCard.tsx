@@ -48,9 +48,9 @@ export default function ProcessingCard({
   }, [progress, done, autoRedirect]);
 
   return (
-    <div className="mx-auto w-full max-w-xl rounded-lg border border-gray-200 bg-white p-8 shadow-sm">
+    <div className="mx-auto w-full max-w-xl rounded-lg border border-gray-200 bg-white p-8 shadow-sm hover:shadow-md">
       <div className="flex flex-col items-center text-center">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100">
           {done ? (
             <CheckCircle2 className="h-6 w-6 text-emerald-500" />
           ) : (
@@ -101,7 +101,7 @@ export default function ProcessingCard({
                 className={`rounded-md px-2.5 py-1 text-xs font-medium ${step.status === "completed"
                   ? "bg-gray-100 text-gray-600"
                   : step.status === "active"
-                    ? "bg-blue-50 text-blue-600"
+                    ? "bg-gray-100 text-blue-600"
                     : "bg-gray-50 text-gray-400"
                   }`}
               >

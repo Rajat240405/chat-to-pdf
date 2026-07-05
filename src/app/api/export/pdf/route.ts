@@ -118,7 +118,7 @@ export async function GET() {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": 'attachment; filename="chat2pdf-sample-export.pdf"',
+        "Content-Disposition": 'attachment; filename="promptpress-sample-export.pdf"',
         "X-Page-Count": String(pdfResult.pageCount),
       },
     });

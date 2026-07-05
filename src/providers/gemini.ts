@@ -1,4 +1,4 @@
-// Chat2PDF — Gemini Provider Adapter
+// PromptPress — Gemini Provider Adapter
 // Handles: gemini.google.com, aistudio.google.com, g.co (short URLs)
 //
 // Supported URL patterns:

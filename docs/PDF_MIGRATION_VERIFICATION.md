@@ -1,4 +1,4 @@
-# Chat2PDF — PDF Migration Verification Report
+# PromptPress — PDF Migration Verification Report
 
 **Step:** 3 of 3 — Renderer Unification Complete  
 **Date:** 2026-06-24  

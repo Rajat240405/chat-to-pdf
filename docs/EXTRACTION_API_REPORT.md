@@ -197,7 +197,7 @@ const handleSubmit = async () => {
     body: JSON.stringify({ url }),
   });
   const { document } = await res.json();
-  sessionStorage.setItem("chat2pdf_current_doc", JSON.stringify(document));
+  sessionStorage.setItem("promptpress_current_doc", JSON.stringify(document));
   router.push("/processing");
 };
 ```
@@ -208,7 +208,7 @@ const handleSubmit = async () => {
 // src/app/preview/page.tsx — replace mockDocuments read with:
 const [activeDoc, setActiveDoc] = useState<ConversationDocument | null>(null);
 useEffect(() => {
-  const stored = sessionStorage.getItem("chat2pdf_current_doc");
+  const stored = sessionStorage.getItem("promptpress_current_doc");
   if (stored) setActiveDoc(JSON.parse(stored));
 }, []);
 ```

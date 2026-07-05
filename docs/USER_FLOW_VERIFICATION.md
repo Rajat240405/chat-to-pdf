@@ -1,4 +1,4 @@
-# Chat2PDF — User Flow Verification Report
+# PromptPress — User Flow Verification Report
 
 **Date:** 2026-06-24  
 **TypeScript check:** ✅ Exit code 0 — zero errors across all 5 changed files
@@ -26,7 +26,7 @@
 **Problem:** `handleGenerateExport` in `export/page.tsx` always sent `documentId: "doc-001"` regardless of which document the user was viewing. Switching to Doc 2 or Doc 3 on the preview page and then exporting still produced Doc 1's PDF.
 
 **Fix:**
-- **`preview/page.tsx`** — writes `chat2pdf_active_doc_id` and `chat2pdf_active_doc_title` to `sessionStorage` whenever `activeDocIndex` changes
+- **`preview/page.tsx`** — writes `promptpress_active_doc_id` and `promptpress_active_doc_title` to `sessionStorage` whenever `activeDocIndex` changes
 - **`export/page.tsx`** — reads these on mount in a `useEffect`; `activeDocId` state (default `"doc-001"`) is replaced by the stored value
 - The export header now shows an **"Exporting: [Document Title]"** badge so the user can confirm which document will be exported before clicking Generate
 

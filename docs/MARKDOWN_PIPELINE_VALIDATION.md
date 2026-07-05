@@ -1,4 +1,4 @@
-# Chat2PDF — Markdown Pipeline Validation Report
+# PromptPress — Markdown Pipeline Validation Report
 
 **Step:** 2 of the Renderer Architecture Migration  
 **File created:** `src/lib/markdown-to-html.ts`  

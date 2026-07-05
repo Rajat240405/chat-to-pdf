@@ -102,47 +102,29 @@ export default function PreviewPage() {
   const [extractedDoc, setExtractedDoc] =
   useState<ConversationDocument | null>(() => getCurrentDocument());
 
-  const [storageChecked, setStorageChecked] = useState(false);
-
-  useEffect(() => {
-
-     
-  // Already available from the in-memory cache
   
-  if (extractedDoc) {
-    setStorageChecked(true);
-    return;
-  }
+
+useEffect(() => {
+  if (extractedDoc) return;
 
   try {
-    const stored = sessionStorage.getItem("chat2pdf_current_doc");
+    const stored = sessionStorage.getItem("promptpress_current_doc");
 
     if (stored) {
       setExtractedDoc(JSON.parse(stored));
     }
-  } catch (e) {
-    
-  } finally {
-    setStorageChecked(true);
+  } catch {
+    // ignore
   }
 }, [extractedDoc]);
 
 
 
   // Active document: real extracted doc when available, otherwise mock data
- const activeDoc =
-  extractedDoc ??
-  (storageChecked ? mockDocuments[activeDocIndex] : null);
+const activeDoc =
+  extractedDoc ?? mockDocuments[activeDocIndex];
 
-if (!activeDoc) {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="text-sm text-gray-500">
-        Preparing conversation preview...
-      </div>
-    </div>
-  );
-}
+
 
 
   // Persist the active document ID to sessionStorage whenever it changes.
@@ -152,8 +134,8 @@ if (!activeDoc) {
   if (!activeDoc) return;
 
   try {
-    sessionStorage.setItem("chat2pdf_active_doc_id", activeDoc.id);
-    sessionStorage.setItem("chat2pdf_active_doc_title", activeDoc.title);
+    sessionStorage.setItem("promptpress_active_doc_id", activeDoc.id);
+    sessionStorage.setItem("promptpress_active_doc_title", activeDoc.title);
   } catch {
     // Ignore sessionStorage failures
   }
@@ -170,9 +152,9 @@ if (!activeDoc) {
   // when active filters are on, ensuring What-You-See === What-You-Export.
   useEffect(() => {
     try {
-      sessionStorage.setItem("chat2pdf_filtered_content", filteredContent);
+      sessionStorage.setItem("promptpress_filtered_content", filteredContent);
       sessionStorage.setItem(
-        "chat2pdf_filters_active",
+        "promptpress_filters_active",
         String(hidePrompts || showCodeOnly || !systemMessages)
       );
     } catch {
@@ -232,15 +214,7 @@ if (!activeDoc) {
 
  
 
-  if (!storageChecked) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="text-sm text-gray-500">
-          Preparing conversation preview...
-        </div>
-      </div>
-    );
-  }
+  
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">

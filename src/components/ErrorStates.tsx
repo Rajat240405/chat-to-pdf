@@ -4,7 +4,7 @@ import { Link2, Lock, AlertTriangle, RefreshCw, HelpCircle } from "lucide-react"
 
 export function InvalidURLError() {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
+    <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm hover:shadow-md">
       <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-red-50">
         <Link2 className="h-6 w-6 text-red-500" />
       </div>
@@ -21,7 +21,7 @@ export function InvalidURLError() {
 
 export function PrivateConversationError() {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
+    <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm hover:shadow-md">
       <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-amber-50">
         <Lock className="h-6 w-6 text-amber-500" />
       </div>
@@ -38,7 +38,7 @@ export function PrivateConversationError() {
 
 export function ExtractionFailureError() {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-8 shadow-sm">
+    <div className="rounded-lg border border-gray-200 bg-white p-8 shadow-sm hover:shadow-md">
       <div className="flex items-start gap-4">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50">
           <AlertTriangle className="h-5 w-5 text-red-500" />

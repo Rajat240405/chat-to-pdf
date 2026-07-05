@@ -28,7 +28,7 @@ async function post(body) {
 }
 
 console.log("=".repeat(65));
-console.log("Chat2PDF — Phase 2 Homepage Flow Validation");
+console.log("PromptPress — Phase 2 Homepage Flow Validation");
 console.log("=".repeat(65));
 console.log(`API endpoint: ${EXTRACT_URL}\n`);
 

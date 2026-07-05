@@ -1,5 +1,5 @@
 // ============================================================
-// Chat2PDF — ChatGPT Provider Adapter (with extraction)
+// PromptPress — ChatGPT Provider Adapter (with extraction)
 // ============================================================
 //
 // SUPPORTED URLS

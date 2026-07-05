@@ -1,4 +1,4 @@
-# Chat2PDF — Development Audit Report
+# PromptPress — Development Audit Report
 
 **Audited:** 2026-06-24  
 **Codebase Phase:** Phase 3 (PDF Export Complete — UI/Mock-data-only, no real backend)  
@@ -9,7 +9,7 @@
 ## 1. Folder Structure
 
 ```
-chat2pdf-saas-frontend-development/
+promptpress-saas-frontend-development/
 │
 ├── HANDOFF.md                          # Excellent 773-line handoff doc (accurate and up to date)
 ├── drizzle.config.json                 # Drizzle ORM config (DB not in active use)
@@ -78,7 +78,7 @@ chat2pdf-saas-frontend-development/
 
 ```
 / (Landing)
-  ↓  [URL entered + "Start Converting" clicked]
+  ↓  [URL entered + "Convert Conversation" clicked]
   ↓  (Next.js Link href="/processing" — NO validation, no URL passed to next page)
 /processing
   ↓  [Simulated animation ~8s (80ms × 100 steps)]
@@ -276,7 +276,7 @@ No syntax highlighting (code blocks render as raw text in a styled `<pre>`)
 
 ### Known Issue
 
-The `/tmp/chat2pdf-pdf-{timestamp}` temp directory approach **will fail on Windows** in production environments since `/tmp` doesn't exist on Windows paths. This is not an issue in this local dev environment (the project runs via Node.js which handles `/tmp` on Windows via WSL or equivalent), but would be a production concern on Windows Server hosts.
+The `/tmp/promptpress-pdf-{timestamp}` temp directory approach **will fail on Windows** in production environments since `/tmp` doesn't exist on Windows paths. This is not an issue in this local dev environment (the project runs via Node.js which handles `/tmp` on Windows via WSL or equivalent), but would be a production concern on Windows Server hosts.
 
 ---
 
@@ -334,7 +334,7 @@ The `/tmp/chat2pdf-pdf-{timestamp}` temp directory approach **will fail on Windo
 
 | Debt Item | Location | Impact |
 |-----------|----------|--------|
-| **`package.json` name is `nextjs-postgresql-template`** | `package.json` L2 | Should be `chat2pdf` |
+| **`package.json` name is `nextjs-postgresql-template`** | `package.json` L2 | Should be `promptpress` |
 | **`/tmp` path hardcoded** in PDF generator | `pdf-generator.ts` L83 | Not Windows-production-safe |
 | **No 404 page** | `app/` | Next.js default 404 shown |
 | **No loading.tsx files** | `app/*/` | No Suspense boundaries; full page loads |

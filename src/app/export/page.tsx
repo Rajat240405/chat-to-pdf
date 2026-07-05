@@ -49,12 +49,12 @@ export default function ExportPage() {
 
   useEffect(() => {
     try {
-      const storedId = sessionStorage.getItem("chat2pdf_active_doc_id");
-      const storedTitle = sessionStorage.getItem("chat2pdf_active_doc_title");
-      const storedContent = sessionStorage.getItem("chat2pdf_filtered_content");
-      const storedFiltersActive = sessionStorage.getItem("chat2pdf_filters_active");
+      const storedId = sessionStorage.getItem("promptpress_active_doc_id");
+      const storedTitle = sessionStorage.getItem("promptpress_active_doc_title");
+      const storedContent = sessionStorage.getItem("promptpress_filtered_content");
+      const storedFiltersActive = sessionStorage.getItem("promptpress_filters_active");
 
-      const storedDoc = sessionStorage.getItem("chat2pdf_current_doc");
+      const storedDoc = sessionStorage.getItem("promptpress_current_doc");
 
       if (storedId) setActiveDocId(storedId);
       if (storedTitle) setActiveDocTitle(storedTitle);
@@ -131,7 +131,7 @@ export default function ExportPage() {
         response.headers
           .get("Content-Disposition")
           ?.split("filename=")?.[1]?.replace(/"/g, "") ||
-        "chat2pdf-export.pdf";
+        "promptpress-export.pdf";
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -179,8 +179,8 @@ export default function ExportPage() {
               Configure your document output precisely. These settings apply to the current active document.
             </p>
             {activeDocTitle && (
-              <p className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+              <p className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-blue-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-gray-1000" />
                 Exporting: <span className="font-semibold">{activeDocTitle}</span>
               </p>
             )}
@@ -220,7 +220,7 @@ export default function ExportPage() {
           )}
 
           {/* Export Settings Panel */}
-          <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+          <div className="rounded-lg border border-gray-200 bg-white shadow-sm hover:shadow-md">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h2 className="text-base font-semibold text-gray-900">Document Export</h2>
               <Link
@@ -242,7 +242,7 @@ export default function ExportPage() {
                         key={format.id}
                         onClick={() => setSelectedFormat(format.id)}
                         className={`flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left text-sm transition-colors ${selectedFormat === format.id
-                          ? "border-blue-200 bg-blue-50 text-blue-700"
+                          ? "border-blue-200 bg-gray-100 text-blue-700"
                           : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                           }`}
                       >
@@ -290,7 +290,7 @@ export default function ExportPage() {
                     <button
                       onClick={() => setMargin("standard")}
                       className={`flex-1 rounded-md border px-4 py-2.5 text-sm font-medium transition-colors ${margin === "standard"
-                        ? "border-blue-200 bg-blue-50 text-blue-700"
+                        ? "border-blue-200 bg-gray-100 text-blue-700"
                         : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                         }`}
                     >
@@ -302,7 +302,7 @@ export default function ExportPage() {
                     <button
                       onClick={() => setMargin("narrow")}
                       className={`flex-1 rounded-md border px-4 py-2.5 text-sm font-medium transition-colors ${margin === "narrow"
-                        ? "border-blue-200 bg-blue-50 text-blue-700"
+                        ? "border-blue-200 bg-gray-100 text-blue-700"
                         : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                         }`}
                     >
@@ -320,7 +320,7 @@ export default function ExportPage() {
                     <button
                       onClick={() => setOrientation("portrait")}
                       className={`flex flex-1 items-center justify-center gap-2 rounded-md border px-4 py-2.5 text-sm font-medium transition-colors ${orientation === "portrait"
-                        ? "border-blue-200 bg-blue-50 text-blue-700"
+                        ? "border-blue-200 bg-gray-100 text-blue-700"
                         : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                         }`}
                     >
@@ -330,7 +330,7 @@ export default function ExportPage() {
                     <button
                       onClick={() => setOrientation("landscape")}
                       className={`flex flex-1 items-center justify-center gap-2 rounded-md border px-4 py-2.5 text-sm font-medium transition-colors ${orientation === "landscape"
-                        ? "border-blue-200 bg-blue-50 text-blue-700"
+                        ? "border-blue-200 bg-gray-100 text-blue-700"
                         : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                         }`}
                     >
@@ -353,7 +353,7 @@ export default function ExportPage() {
                         onChange={(e) => setIncludeLogo(e.target.checked)}
                         className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700">Include Chat2PDF Logo</span>
+                      <span className="text-sm text-gray-700">Include PromptPress Logo</span>
                     </label>
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input
@@ -384,7 +384,7 @@ export default function ExportPage() {
                 </label>
                 <div className="mt-3 flex aspect-[3/4] items-center justify-center rounded-md border border-gray-200 bg-gray-50 p-4">
                   <div
-                    className={`w-full rounded border shadow-sm ${orientation === "landscape" ? "aspect-[4/3]" : "aspect-[3/4]"
+                    className={`w-full rounded border shadow-sm hover:shadow-md ${orientation === "landscape" ? "aspect-[4/3]" : "aspect-[3/4]"
                       } ${darkMode ? "bg-gray-900" : "bg-white"}`}
                   >
                     <div className={`p-3 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>

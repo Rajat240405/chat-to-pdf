@@ -3,7 +3,7 @@ import path from "path";
 import { markdownToHtml } from "@/lib/markdown-to-html";
 
 // ============================================================
-// Chat2PDF — PDF Generator
+// PromptPress — PDF Generator
 // ============================================================
 // Converts markdown conversation content into professional,
 // print-optimized A4 PDF documents using Puppeteer.
@@ -102,7 +102,7 @@ export async function generatePdf(options: PdfGenerationOptions): Promise<PdfRes
   });
 
   // Step 3: Write temp file and use Puppeteer to generate PDF
-  const tempDir = "/tmp/chat2pdf-pdf-" + Date.now();
+  const tempDir = "/tmp/promptpress-pdf-" + Date.now();
   fs.mkdirSync(tempDir, { recursive: true });
 
   const htmlPath = path.join(tempDir, "document.html");
@@ -319,7 +319,7 @@ function buildPdfTemplate(vars: TemplateVars): string {
       "  <div style='display:flex;align-items:center;justify-content:space-between;padding-bottom:16pt;border-bottom:1px solid #e5e7eb;margin-bottom:24pt;page-break-after:avoid;'>" +
       "    <div style='display:flex;align-items:center;gap:10pt;'>" +
       "      <svg width='28' height='28' viewBox='0 0 24 24' fill='none'><rect width='24' height='24' rx='6' fill='#111827'/><path d='M7 8h4M7 12h10M7 16h6' stroke='white' stroke-width='1.5' stroke-linecap='round'/><rect x='14' y='5' width='5' height='5' rx='1.5' fill='#2563eb'/></svg>" +
-      "      <span style='font-size:11pt;font-weight:700;letter-spacing:-0.02em;color:#111827;'>Chat2PDF</span>" +
+      "      <span style='font-size:11pt;font-weight:700;letter-spacing:-0.02em;color:#111827;'>PromptPress</span>" +
       "    </div>" +
       "    <div style='font-size:8pt;color:#9ca3af;'>" + "Generated " + vars.generatedAt + "</div>" +
       "  </div>"
@@ -359,7 +359,7 @@ function buildPdfTemplate(vars: TemplateVars): string {
 
   lines.push(
     "  <div class='pdf-footer'>" +
-    "    <p style='margin:0;'>" + "Exported by Chat2PDF &mdash; " + vars.generatedAt + "</p>" +
+    "    <p style='margin:0;'>" + "Exported by PromptPress &mdash; " + vars.generatedAt + "</p>" +
     "    <p style='margin:4pt 0 0 0;color:#d1d5db;'>This document was auto-generated from an AI conversation.</p>" +
     "  </div>"
   );

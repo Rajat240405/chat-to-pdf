@@ -14,14 +14,14 @@ export default function Header({ variant = "landing", showExport = false }: Head
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-6">
           <Link href="/" className="text-xl font-bold tracking-tight text-gray-900">
-            Chat2PDF
+            PromptPress
           </Link>
           <span className="text-gray-300">|</span>
           <Link
-            href="/preview"
+            href="/history"
             className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
           >
-            My Documents
+            Recent Conversations
           </Link>
         </div>
 

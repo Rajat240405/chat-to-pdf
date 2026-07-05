@@ -19,7 +19,7 @@ export default function ProcessingPage() {
     // Otherwise keep the full 10-second mock-processing delay.
     let delay = 10000;
     try {
-      if (sessionStorage.getItem("chat2pdf_current_doc")) {
+      if (sessionStorage.getItem("promptpress_current_doc")) {
         delay = 1500;
       }
     } catch {

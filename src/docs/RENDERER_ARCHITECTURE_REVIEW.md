@@ -1,4 +1,4 @@
-# Chat2PDF — Renderer Architecture Review
+# PromptPress — Renderer Architecture Review
 
 **Date:** 2026-06-24  
 **Scope:** `src/components/MarkdownRenderer.tsx` vs `src/lib/pdf-generator.ts → customRenderMarkdown()`  

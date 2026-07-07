@@ -13,7 +13,7 @@
 
 **Before:** hard-coded 10-second timer regardless of context.
 
-**After:** on mount, the page checks `sessionStorage["chat2pdf_current_doc"]`:
+**After:** on mount, the page checks `sessionStorage["promptpress_current_doc"]`:
 
 | Condition | Delay | Behaviour |
 |-----------|------:|---------|
@@ -35,7 +35,7 @@ const [extractedDoc, setExtractedDoc] = useState<ConversationDocument | null>(nu
 
 useEffect(() => {
   try {
-    const stored = sessionStorage.getItem("chat2pdf_current_doc");
+    const stored = sessionStorage.getItem("promptpress_current_doc");
     if (stored) setExtractedDoc(JSON.parse(stored) as ConversationDocument);
   } catch {
     // sessionStorage unavailable or corrupt — fall back to mock data silently
@@ -71,7 +71,7 @@ When a real document is present there is only one document — no switcher is ne
 | `applyFilters` / `extractCodeBlocks` | ✅ Unchanged — work on any string |
 | `hidePrompts` / `showCodeOnly` / `systemMessages` filter state | ✅ Unchanged |
 | `handleQuickExport` → `POST /api/export/pdf` | ✅ Unchanged |
-| `sessionStorage` writes (`chat2pdf_active_doc_id`, `chat2pdf_filtered_content`) | ✅ Unchanged — now write the real doc's values |
+| `sessionStorage` writes (`promptpress_active_doc_id`, `promptpress_filtered_content`) | ✅ Unchanged — now write the real doc's values |
 | `PreviewSidebar` props | ✅ Unchanged |
 | Document header, footer, metadata display | ✅ Unchanged — all read from `activeDoc` |
 
@@ -79,7 +79,7 @@ When a real document is present there is only one document — no switcher is ne
 
 ## 3. Fallback Behaviour
 
-When `sessionStorage["chat2pdf_current_doc"]` is absent (cleared, never set, or `sessionStorage` unavailable):
+When `sessionStorage["promptpress_current_doc"]` is absent (cleared, never set, or `sessionStorage` unavailable):
 
 - `extractedDoc` stays `null`
 - `activeDoc` resolves to `mockDocuments[activeDocIndex]`
@@ -125,16 +125,16 @@ User pastes: https://chatgpt.com/share/6a3b9a96-...
 [Homepage — Phase 2 ✅]
   → POST /api/extract { url }
   → 200 OK: { document: ConversationDocument }
-  → sessionStorage["chat2pdf_current_doc"] = JSON.stringify(doc)
+  → sessionStorage["promptpress_current_doc"] = JSON.stringify(doc)
   → router.push("/processing")
 
 [Processing — Phase 3 ✅]
-  → sessionStorage["chat2pdf_current_doc"] found
+  → sessionStorage["promptpress_current_doc"] found
   → delay = 1,500 ms (animation)
   → router.push("/preview")
 
 [Preview — Phase 4 ✅]
-  → useEffect reads sessionStorage["chat2pdf_current_doc"]
+  → useEffect reads sessionStorage["promptpress_current_doc"]
   → extractedDoc = parsed ConversationDocument
   → activeDoc = extractedDoc  (NOT mockDocuments)
   → MarkdownRenderer renders "# Math Question Answered\n\n**User**\n..."

@@ -1,12 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+
 import { CheckCircle2, Loader2, X } from "lucide-react";
 import { mockProcessingSteps } from "@/lib/mock-data";
 
-export default function ProcessingCard() {
-  const router = useRouter();
+interface ProcessingCardProps {
+  autoRedirect?: boolean;
+}
+
+export default function ProcessingCard({
+  autoRedirect = true,
+}: ProcessingCardProps) {
+  
   const [progress, setProgress] = useState(0);
   const [steps, setSteps] = useState(mockProcessingSteps);
   const [done, setDone] = useState(false);
@@ -28,7 +34,7 @@ export default function ProcessingCard() {
 
   // When progress hits 100: mark all steps completed, then redirect
   useEffect(() => {
-    if (progress >= 100 && !done) {
+    if (progress >= 100 && !done && autoRedirect) {
       setDone(true);
       // Mark the last active step as completed so the UI shows ✓ before redirect
       setSteps((prev) =>
@@ -37,17 +43,14 @@ export default function ProcessingCard() {
         )
       );
       // 1 s delay lets the user see 100 % and green checkmarks before navigating
-      const timer = setTimeout(() => {
-        router.push("/preview");
-      }, 1000);
-      return () => clearTimeout(timer);
+      
     }
-  }, [progress, done, router]);
+  }, [progress, done, autoRedirect]);
 
   return (
-    <div className="mx-auto w-full max-w-xl rounded-lg border border-gray-200 bg-white p-8 shadow-sm">
+    <div className="mx-auto w-full max-w-xl rounded-lg border border-gray-200 bg-white p-8 shadow-sm hover:shadow-md">
       <div className="flex flex-col items-center text-center">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100">
           {done ? (
             <CheckCircle2 className="h-6 w-6 text-emerald-500" />
           ) : (
@@ -73,9 +76,8 @@ export default function ProcessingCard() {
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
           <div
-            className={`h-full rounded-full transition-all duration-300 ease-out ${
-              done ? "bg-emerald-500" : "bg-blue-600"
-            }`}
+            className={`h-full rounded-full transition-all duration-300 ease-out ${done ? "bg-emerald-500" : "bg-blue-600"
+              }`}
             style={{ width: `${Math.min(progress, 100)}%` }}
           />
         </div>
@@ -96,13 +98,12 @@ export default function ProcessingCard() {
             </div>
             {step.detail && (
               <span
-                className={`rounded-md px-2.5 py-1 text-xs font-medium ${
-                  step.status === "completed"
-                    ? "bg-gray-100 text-gray-600"
-                    : step.status === "active"
-                    ? "bg-blue-50 text-blue-600"
+                className={`rounded-md px-2.5 py-1 text-xs font-medium ${step.status === "completed"
+                  ? "bg-gray-100 text-gray-600"
+                  : step.status === "active"
+                    ? "bg-gray-100 text-blue-600"
                     : "bg-gray-50 text-gray-400"
-                }`}
+                  }`}
               >
                 {step.status === "active" && (
                   <span className="mr-1 inline-flex">

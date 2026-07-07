@@ -30,7 +30,7 @@
 ### `handleConvert` flow
 
 ```
-Click "Start Converting" (or press Enter in the input)
+Click "Convert Conversation" (or press Enter in the input)
   │
   ├─ url.trim() === "" → setError("Please paste a share link…") → return
   │
@@ -40,9 +40,11 @@ Click "Start Converting" (or press Enter in the input)
        │
        ├─ !res.ok → setError(json.error ?? generic message) → return
        │
-       ├─ !json.document → setError("Unexpected response…") → return
+       ├─ !json.document → setError("We couldn't extract that conversation.
+
+Please make sure it's a public ChatGPT share link.…") → return
        │
-       ├─ sessionStorage.setItem("chat2pdf_current_doc", JSON.stringify(doc))
+       ├─ sessionStorage.setItem("promptpress_current_doc", JSON.stringify(doc))
        │    (inner try/catch — private browsing degrades silently)
        │
        └─ router.push("/processing")
@@ -52,7 +54,7 @@ Click "Start Converting" (or press Enter in the input)
 
 | Element | Before | After |
 |---------|--------|-------|
-| Hero "Start Converting" | `<Link href="/processing">` | `<button id="btn-start-converting">` with `onClick={handleConvert}` |
+| Hero "Convert Conversation" | `<Link href="/processing">` | `<button id="btn-start-converting">` with `onClick={handleConvert}` |
 | Input | No `id`, no `disabled`, no `onKeyDown` | `id="url-input"`, `disabled={isLoading}`, Enter key triggers `handleConvert` |
 | Error display | Absent | `<p id="url-error" role="alert">` below input row, shown only when `error !== null` |
 | CTA "Get Started Free" | `<Link href="/processing">` | `<button id="btn-get-started">` that scrolls to top |
@@ -64,7 +66,7 @@ Click "Start Converting" (or press Enter in the input)
 The key written by the homepage is read by the preview page (Phase 4):
 
 ```
-Key:   "chat2pdf_current_doc"
+Key:   "promptpress_current_doc"
 Value: JSON.stringify(ConversationDocument)
 Size:  2.3 KB for a 6-message conversation (well within sessionStorage limits)
 ```
@@ -114,7 +116,7 @@ The document is now in `sessionStorage` after a successful conversion. The remai
 
 ```typescript
 // processing/page.tsx — read the URL being processed (optional display)
-const doc = JSON.parse(sessionStorage.getItem("chat2pdf_current_doc") ?? "null");
+const doc = JSON.parse(sessionStorage.getItem("promptpress_current_doc") ?? "null");
 // Redirect immediately if doc already exists (extraction already done)
 if (doc) router.push("/preview");
 ```
@@ -124,7 +126,7 @@ if (doc) router.push("/preview");
 ```typescript
 // preview/page.tsx — replace mockDocuments read
 useEffect(() => {
-  const stored = sessionStorage.getItem("chat2pdf_current_doc");
+  const stored = sessionStorage.getItem("promptpress_current_doc");
   if (stored) setActiveDoc(JSON.parse(stored));
 }, []);
 ```

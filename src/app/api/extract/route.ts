@@ -43,12 +43,13 @@ function buildRenderedMarkdown(conv: Conversation): string {
 
   for (const msg of conv.messages) {
     const roleLabel = msg.role === "user" ? "**User**" : "**Assistant**";
+
     const ts =
       msg.timestamp
         ? ` _(${new Date(msg.timestamp).toLocaleString("en-US", {
-            dateStyle: "medium",
-            timeStyle: "short",
-          })})_`
+          dateStyle: "medium",
+          timeStyle: "short",
+        })})_`
         : "";
 
     lines.push(`${roleLabel}${ts}`);
@@ -260,7 +261,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
     // Unknown error — log server-side, return generic message to client
-    console.error("[/api/extract] Unexpected error:", err);
+    
     return NextResponse.json(
       {
         error: "An unexpected error occurred during extraction.",

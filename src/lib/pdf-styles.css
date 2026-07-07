@@ -1,5 +1,5 @@
 /* ============================================================
-   Chat2PDF — Print & PDF Optimized Stylesheet
+   PromptPress — Print & PDF Optimized Stylesheet
    ============================================================
    This stylesheet is injected into Puppeteer-generated PDFs.
    It matches the preview page styles as closely as possible.
@@ -10,16 +10,38 @@
 /* === Page Setup (A4) === */
 @page {
   size: A4;
-  margin: 20mm 18mm;
+  
 }
 
 * {
   box-sizing: border-box;
 }
 
+.pdf-hero {
+  margin-bottom: 12pt;
+  padding-bottom: 8pt;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.pdf-hero-title {
+  font-size: 18pt;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 4pt;
+}
+
+.pdf-hero-subtitle {
+  display: none;
+}
+
+.pdf-meta-row {
+  font-size: 9pt;
+  color: #6b7280;
+}
+
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 12pt;
+  font-size: $FONT_SIZEpt;
   line-height: 1.65;
   color: #111827;
   background: white;
@@ -31,7 +53,8 @@ body {
 
 /* === Document Container === */
 .pdf-document {
-  max-width: 100%;
+  max-width: 88%;
+  margin: 0 auto;
   padding: 0;
 }
 
@@ -95,6 +118,7 @@ a {
   color: #2563eb;
   text-decoration: none;
 }
+
 a[href^="http"]::after {
   content: " (" attr(href) ")";
   font-size: 9pt;
@@ -103,7 +127,8 @@ a[href^="http"]::after {
 }
 
 /* === Lists === */
-ul, ol {
+ul,
+ol {
   margin-top: 8pt;
   margin-bottom: 12pt;
   padding-left: 22pt;
@@ -115,12 +140,15 @@ li {
   widows: 2;
 }
 
-ul ul, ol ol, ul ol, ol ul {
+ul ul,
+ol ol,
+ul ol,
+ol ul {
   margin-top: 4pt;
   margin-bottom: 4pt;
 }
 
-li > strong {
+li>strong {
   color: #111827;
   font-weight: 600;
 }
@@ -131,7 +159,6 @@ table {
   border-collapse: collapse;
   margin: 14pt 0;
   font-size: 10pt;
-  page-break-inside: avoid;
 }
 
 thead {
@@ -207,7 +234,11 @@ code {
 }
 
 /* Inline code */
-p code, li code, td code, th code, blockquote code:not(pre code) {
+p code,
+li code,
+td code,
+th code,
+blockquote code:not(pre code) {
   background-color: #f3f4f6;
   color: #dc2626;
   padding: 2pt 5pt;
@@ -221,7 +252,7 @@ p code, li code, td code, th code, blockquote code:not(pre code) {
   border: 1px solid #334155;
   border-radius: 6px;
   overflow: hidden;
-  page-break-inside: avoid;
+  break-inside: auto;
 }
 
 .code-header {
@@ -249,39 +280,145 @@ p code, li code, td code, th code, blockquote code:not(pre code) {
 }
 
 /* === Syntax Highlighting Colors === */
-.hljs-keyword { color: #c084fc; font-weight: 500; }
-.hljs-built_in { color: #38bdf8; }
-.hljs-type { color: #fb923c; }
-.hljs-literal { color: #38bdf8; }
-.hljs-number { color: #fb923c; }
-.hljs-string { color: #4ade80; }
-.hljs-regexp { color: #4ade80; }
-.hljs-symbol { color: #c084fc; }
-.hljs-class { color: #fb923c; }
-.hljs-function { color: #60a5fa; }
-.hljs-title { color: #60a5fa; }
-.hljs-params { color: #e2e8f0; }
-.hljs-comment { color: #64748b; font-style: italic; }
-.hljs-doctag { color: #64748b; }
-.hljs-meta { color: #64748b; }
-.hljs-attr { color: #f97316; }
-.hljs-attribute { color: #e2e8f0; }
-.hljs-variable { color: #e2e8f0; }
-.hljs-bullet { color: #38bdf8; }
-.hljs-code { color: #4ade80; }
-.hljs-emphasis { color: #c084fc; font-style: italic; }
-.hljs-strong { color: #f8fafc; font-weight: bold; }
-.hljs-formula { color: #f97316; }
-.hljs-name { color: #67e8f9; }
-.hljs-selector-tag { color: #fb923c; }
-.hljs-selector-class { color: #38bdf8; }
-.hljs-selector-id { color: #c084fc; }
-.hljs-selector-pseudo { color: #94a3b8; }
-.hljs-subst { color: #e2e8f0; }
-.hljs-template-variable { color: #e2e8f0; }
-.hljs-template-tag { color: #c084fc; }
-.hljs-deletion { background-color: #450a0a; color: #fca5a5; display: inline-block; }
-.hljs-addition { background-color: #052e16; color: #86efac; display: inline-block; }
+.hljs-keyword {
+  color: #c084fc;
+  font-weight: 500;
+}
+
+.hljs-built_in {
+  color: #38bdf8;
+}
+
+.hljs-type {
+  color: #fb923c;
+}
+
+.hljs-literal {
+  color: #38bdf8;
+}
+
+.hljs-number {
+  color: #fb923c;
+}
+
+.hljs-string {
+  color: #4ade80;
+}
+
+.hljs-regexp {
+  color: #4ade80;
+}
+
+.hljs-symbol {
+  color: #c084fc;
+}
+
+.hljs-class {
+  color: #fb923c;
+}
+
+.hljs-function {
+  color: #60a5fa;
+}
+
+.hljs-title {
+  color: #60a5fa;
+}
+
+.hljs-params {
+  color: #e2e8f0;
+}
+
+.hljs-comment {
+  color: #64748b;
+  font-style: italic;
+}
+
+.hljs-doctag {
+  color: #64748b;
+}
+
+.hljs-meta {
+  color: #64748b;
+}
+
+.hljs-attr {
+  color: #f97316;
+}
+
+.hljs-attribute {
+  color: #e2e8f0;
+}
+
+.hljs-variable {
+  color: #e2e8f0;
+}
+
+.hljs-bullet {
+  color: #38bdf8;
+}
+
+.hljs-code {
+  color: #4ade80;
+}
+
+.hljs-emphasis {
+  color: #c084fc;
+  font-style: italic;
+}
+
+.hljs-strong {
+  color: #f8fafc;
+  font-weight: bold;
+}
+
+.hljs-formula {
+  color: #f97316;
+}
+
+.hljs-name {
+  color: #67e8f9;
+}
+
+.hljs-selector-tag {
+  color: #fb923c;
+}
+
+.hljs-selector-class {
+  color: #38bdf8;
+}
+
+.hljs-selector-id {
+  color: #c084fc;
+}
+
+.hljs-selector-pseudo {
+  color: #94a3b8;
+}
+
+.hljs-subst {
+  color: #e2e8f0;
+}
+
+.hljs-template-variable {
+  color: #e2e8f0;
+}
+
+.hljs-template-tag {
+  color: #c084fc;
+}
+
+.hljs-deletion {
+  background-color: #450a0a;
+  color: #fca5a5;
+  display: inline-block;
+}
+
+.hljs-addition {
+  background-color: #052e16;
+  color: #86efac;
+  display: inline-block;
+}
 
 /* === Horizontal Rule === */
 hr {
@@ -294,18 +431,23 @@ hr {
 /* === Page Break Controls === */
 
 /* Avoid breaking after headings */
-h1, h2, h3 {
+h1,
+h2,
+h3 {
   page-break-after: avoid;
 }
 
 /* Avoid breaking before first child of section */
-h1 + *, h2 + *, h3 + * {
+h1+*,
+h2+*,
+h3+* {
   page-break-before: avoid;
 }
 
 /* Keep list items together - avoid single item on new page */
-ul, ol {
-  page-break-inside: avoid;
+ul,
+ol {
+  page-break-inside: auto;
 }
 
 /* Keep table rows together if possible */
@@ -320,11 +462,13 @@ blockquote {
 
 /* Code blocks never break across pages */
 pre {
-  page-break-inside: avoid !important;
+  page-break-inside: auto;
+  break-inside: auto;
 }
 
 /* Keep figures and images with captions together */
-figure, img {
+figure,
+img {
   page-break-inside: avoid;
 }
 
@@ -342,17 +486,12 @@ figure, img {
 }
 
 /* === Narrow Margin Variant === */
-body.margin-narrow @page {
-  margin: 12mm 10mm;
-}
 
 /* === Landscape Orientation === */
-body.orientation-landscape @page {
-  size: A4 landscape;
-}
+
 
 /* === Dark Mode PDF === */
-body.dark-mode body {
+body.dark-mode {
   background-color: #0f172a;
   color: #e2e8f0;
 }
@@ -391,4 +530,84 @@ body.dark-mode blockquote {
   color: #9ca3af;
   text-align: center;
   page-break-inside: avoid;
+}
+
+.chat-message {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12pt;
+  margin: 16pt 0;
+}
+
+.chat-message.user {
+  background: #f8fafc;
+}
+
+.chat-message.assistant {
+  background: #ffffff;
+}
+
+.chat-transcript {
+  margin-top: 12pt;
+}
+
+.chat-transcript .markdown-body {
+    font-size: inherit;
+    line-height: 1.7;
+}
+
+.chat-transcript hr {
+  margin: 18pt 0;
+  border: none;
+  border-top: 1px solid #e5e7eb;
+}
+
+.chat-transcript strong:first-child {
+  color: #111827;
+  font-weight: 700;
+}
+
+.markdown-body>p:first-of-type strong,
+.markdown-body strong {
+  color: #111827;
+}
+
+.markdown-body hr {
+  margin: 20pt 0;
+  border: none;
+  border-top: 1px dashed #d1d5db;
+}
+
+.markdown-body p strong:first-child {
+  display: inline-block;
+  padding: 4pt 8pt;
+  border-radius: 999px;
+  background: #f3f4f6;
+  font-size: 9pt;
+  font-weight: 700;
+  color: #111827;
+}
+
+.code-block-container {
+  margin: 14pt 0;
+  border-radius: 8px;
+  overflow: hidden;
+  page-break-inside: avoid;
+  max-width: 95%;
+}
+
+.code-language-badge {
+  background: #0f172a;
+  color: #cbd5e1;
+  padding: 6pt 12pt;
+  font-size: 8pt;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: 'Inter', sans-serif;
+}
+
+.code-block-container pre {
+  margin: 0 !important;
+  border-radius: 0 0 8px 8px !important;
 }

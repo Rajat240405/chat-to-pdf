@@ -1,5 +1,5 @@
 // ============================================================
-// Chat2PDF — Provider Registry & Public API
+// PromptPress — Provider Registry & Public API
 // ============================================================
 //
 // Single import point for all provider functionality.

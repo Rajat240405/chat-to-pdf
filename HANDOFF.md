@@ -1,4 +1,4 @@
-# Chat2PDF — Project Handoff Document
+# PromptPress — Project Handoff Document
 
 **Version:** Phase 3 (PDF Export Complete)
 **Last Updated:** 2026-01
@@ -24,7 +24,7 @@
 
 ## 1. Project Overview
 
-Chat2PDF is a **document generation SaaS platform** that converts AI chat conversations (from ChatGPT, Claude, Gemini) into professionally formatted technical documents.
+PromptPress is a **document generation SaaS platform** that converts AI chat conversations (from ChatGPT, Claude, Gemini) into professionally formatted technical documents.
 
 ### Product Vision
 
@@ -61,7 +61,7 @@ User pastes shared URL → System extracts & normalizes conversation
 ## 2. Folder Structure
 
 ```
-chat2pdf/
+promptpress/
 │
 ├── scripts/
 │   └── generate-pdf-chromium.js    # Standalone Puppeteer script (alternative to direct API usage)
@@ -130,7 +130,7 @@ import type { PdfGenerationOptions } from "@/lib/pdf-generator";
 ```
 Layout
   ├─ Header                  ← shared across all pages (variant prop for landing vs app pages)
-  │    ├─ Logo text "Chat2PDF"
+  │    ├─ Logo text "PromptPress"
   │    ├─ "My Documents" link → /preview
   │    ├─ Settings icon button
   │    ├─ User avatar icon button
@@ -238,7 +238,7 @@ Custom Component Overrides:
 
 ```
 Landing Page (/)
-    │  [User enters URL] + [Clicks "Start Converting"]
+    │  [User enters URL] + [Clicks "Convert Conversation"]
     ▼
 Processing Page (/processing)
     │  [Animated progress 0→100%, 5 steps complete]
@@ -269,7 +269,7 @@ For PDF generation, the flow is:
 4. PDF pipeline runs:
    a. customRenderMarkdown() converts markdown → highlighted HTML
    b. buildPdfTemplate() wraps HTML in full A4 document with print CSS
-   c. Writes temp .html file to /tmp/chat2pdf-pdf-{timestamp}/
+   c. Writes temp .html file to /tmp/promptpress-pdf-{timestamp}/
    d. Launches Puppeteer → loads HTML → waits for fonts → calls page.pdf()
    e. Reads resulting .pdf buffer → returns binary response
 5. Browser receives blob → creates download link → triggers file save
@@ -281,7 +281,7 @@ For PDF generation, the flow is:
 
 ### Current State Approach: Local Component State Only
 
-Chat2PDF currently uses **zero global state management libraries** (no Redux, Zustand, Jotai, or React Context store). This is intentional because:
+PromptPress currently uses **zero global state management libraries** (no Redux, Zustand, Jotai, or React Context store). This is intentional because:
 
 1. The application is in **Phase 1–3** (UI-only, no backend persistence)
 2. All data is hardcoded mock data (bundled at build time)
@@ -291,8 +291,8 @@ Chat2PDF currently uses **zero global state management libraries** (no Redux, Zu
 
 #### Preview Page (`src/app/preview/page.tsx`)
 ```typescript
-const [activeDocIndex, setActiveDocIndex] = useState(0);       // Which of 3 docs is shown
-const [showDocSwitcher, setShowDocSwitcher] = useState(false); // Dropdown visibility
+       // Which of 3 docs is shown
+ // Dropdown visibility
 ```
 
 #### PreviewSidebar (`src/components/PreviewSidebar.tsx`)
@@ -456,8 +456,8 @@ Go • TypeScript/TSX • Python • Java • Bash/shell • SQL • JSON • YA
 | P2 | Document list/library | Medium | Show all user's converted documents |
 | P2 | Batch export | Low | Convert multiple URLs in sequence |
 | P3 | Custom templates | Medium | Let users design PDF layouts/templates |
-| P3 | Branding white-label | Medium | Remove Chat2PDF branding, custom logo support |
-| P3 | CLI tool | Low | `npx chat2pdf convert <url> --format pdf --output ./doc.pdf` |
+| P3 | Branding white-label | Medium | Remove PromptPress branding, custom logo support |
+| P3 | CLI tool | Low | `npx promptpress convert <url> --format pdf --output ./doc.pdf` |
 | P3 | API keys management | Medium | Per-provider API key storage for private conversations |
 | P3 | Rate limiting | Low | Prevent abuse of free tier |
 
@@ -499,14 +499,14 @@ Server (Next.js API Route)
     │     │     ├─ Injects Google Fonts (Inter + JetBrains Mono)
     │     │     ├─ Embeds PDF_CSS stylesheet (full print-optimized rules)
     │     │     ├─ Adds configurable body classes (margin-narrow, orientation-landscape, dark-mode)
-    │     │     ├─ Optionally includes Chat2PDF logo header SVG
+    │     │     ├─ Optionally includes PromptPress logo header SVG
     │     │     ├─ Inserts document title as <h1>
     │     │     ├─ Embeds rendered bodyContent
     │     │     └─ Appends footer with timestamp
     │     │     Output: Complete valid HTML5 document
     │     │
     │     └─ 2c. Convert HTML → PDF (runPuppeteerConversion)
-    │         ├─ Creates temp directory: /tmp/chat2pdf-pdf-{timestamp}/
+    │         ├─ Creates temp directory: /tmp/promptpress-pdf-{timestamp}/
     │         ├─ Writes HTML to disk (required by Puppeteer setContent/file:// protocol)
     │         ├─ Dynamically imports puppeteer module (avoids bundler issues)
     │         ├─ Launches headless Chromium with security flags
@@ -517,7 +517,7 @@ Server (Next.js API Route)
     │         │     format: "A4",
     │         │     margin: { top/bottom/left/right: "5mm" },
     │         │     printBackground: true,
-    │         │     preferCSSPageSize: true,
+    │         │     preferCSSPageSize: false,
     │         │     scale: 1.0
     │         │ })
     │         ├─ Writes buffer to temp PDF file
@@ -540,7 +540,7 @@ Browser downloads file automatically
 | `fontSize` | 8–18 (integer) | 12pt | Body text size in the PDF |
 | `margins` | `"standard"` or `"narrow"` | `"standard"` | Standard=20mm, Narrow=12mm page margins |
 | `orientation` | `"portrait"` or `"landscape"` | `"portrait"` | A4 page orientation |
-| `includeLogo` | boolean | `true` | Shows Chat2PDF logo + timestamp in header |
+| `includeLogo` | boolean | `true` | Shows PromptPress logo + timestamp in header |
 | `darkMode` | boolean | `false` | Dark background, inverted syntax colors |
 | `showTimestamps` | boolean | `false` | Placeholder for future feature |
 
@@ -609,7 +609,7 @@ This bypasses the Next.js API route entirely and is useful for CI testing.
 
 4. **Database layer exists but isn't connected**: `src/db/` has Drizzle + Postgres configured but zero routes actually call it. All data flows through `mock-data.ts`.
 
-5. **The `.tmp` directory referenced in older versions** has been replaced with timestamped temp dirs at `/tmp/chat2pdf-pdf-{timestamp}/` to avoid conflicts under concurrent requests.
+5. **The `.tmp` directory referenced in older versions** has been replaced with timestamped temp dirs at `/tmp/promptpress-pdf-{timestamp}/` to avoid conflicts under concurrent requests.
 
 ---
 
@@ -690,7 +690,7 @@ Step 11: Analytics & monitoring
 Step 12: CLI & API-first access
   → REST API for programmatic use
   → SDKs (Python, Node.js)
-  → CLI tool (npm install -g chat2pdf)
+  → CLI tool (npm install -g promptpress)
 
 Step 13: Multi-tenant architecture
   → Tenant isolation (database per org, row-level security)
@@ -745,9 +745,9 @@ DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/app_db
 
 # Optional
 PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome  # Use local Chrome
-TEMP_DIR=/tmp/chat2pdf                              # Override temp dir
+TEMP_DIR=/tmp/promptpress                              # Override temp dir
 NODE_ENV=production
-NEXT_PUBLIC_API_URL=https://api.chat2pdf.com          # Future: API gateway
+NEXT_PUBLIC_API_URL=https://api.promptpress.com          # Future: API gateway
 ```
 
 ## Appendix C: Key File Reference Index

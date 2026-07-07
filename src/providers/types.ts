@@ -1,5 +1,5 @@
 // ============================================================
-// Chat2PDF — Provider Adapter Type Definitions
+// PromptPress — Provider Adapter Type Definitions
 // ============================================================
 //
 // This file defines the complete normalized data contract shared

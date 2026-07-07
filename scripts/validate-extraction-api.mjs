@@ -33,7 +33,7 @@ async function postExtract(body) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 console.log("=".repeat(65));
-console.log("Chat2PDF — POST /api/extract Validation");
+console.log("PromptPress — POST /api/extract Validation");
 console.log("=".repeat(65));
 console.log(`Endpoint: ${EXTRACT_ENDPOINT}\n`);
 

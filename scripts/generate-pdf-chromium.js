@@ -87,7 +87,7 @@ async function main() {
       },
       printBackground: true,
       displayHeaderFooter: false, // We handle this in the template itself
-      preferCSSPageSize: true, // Let our @page rules control size
+      preferCSSPageSize: false, // Let our @page rules control size
       scale: 1.0,
       headerTemplate: "<div></div>", // Disable default header
       footerTemplate: "<div></div>", // Disable default footer

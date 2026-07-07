@@ -88,7 +88,7 @@ preview/page.tsx
   └── renders activeDoc.renderedMarkdown via MarkdownRenderer (line 276)
 ```
 
-There is no `useEffect` that fetches from an API. There is no `searchParams` read. There is no `sessionStorage` read for conversation data. The `sessionStorage` writes at lines 101–107 only store `chat2pdf_active_doc_id` and `chat2pdf_active_doc_title` — values from the mock document — so the export page reads back mock IDs.
+There is no `useEffect` that fetches from an API. There is no `searchParams` read. There is no `sessionStorage` read for conversation data. The `sessionStorage` writes at lines 101–107 only store `promptpress_active_doc_id` and `promptpress_active_doc_title` — values from the mock document — so the export page reads back mock IDs.
 
 ---
 
@@ -161,7 +161,7 @@ With:
 // Read document from sessionStorage (written after extraction)
 const [doc, setDoc] = useState<ConversationDocument | null>(null);
 useEffect(() => {
-  const stored = sessionStorage.getItem("chat2pdf_current_doc");
+  const stored = sessionStorage.getItem("promptpress_current_doc");
   if (stored) setDoc(JSON.parse(stored));
 }, []);
 ```
@@ -186,7 +186,7 @@ Step 1  src/app/api/extract/route.ts          CREATE
 
 Step 2  src/app/page.tsx                       MODIFY
         ↳ Replace <Link> with button + fetch("/api/extract")
-        ↳ Write result to sessionStorage("chat2pdf_current_doc")
+        ↳ Write result to sessionStorage("promptpress_current_doc")
         ↳ Navigate to /processing
 
 Step 3  src/app/processing/page.tsx            MODIFY

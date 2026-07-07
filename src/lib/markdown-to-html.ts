@@ -1,5 +1,5 @@
 // ============================================================
-// Chat2PDF — Shared Markdown → HTML Utility
+// PromptPress — Shared Markdown → HTML Utility
 // ============================================================
 //
 // PURPOSE

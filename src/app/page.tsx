@@ -1,10 +1,11 @@
 "use client";
-
+import { setCurrentDocument } from "@/lib/current-document-store";
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { saveToHistory } from "@/lib/history";
 import {
   FileText,
   FileOutput,
@@ -50,20 +51,24 @@ export default function LandingPage() {
         return;
       }
       if (!json?.document) {
-        setError("Unexpected response from server. Please try again.");
+        setError("We couldn't extract that conversation.Please make sure it's a public ChatGPT share link. from server. Please try again.");
         return;
       }
       // Store the document so the preview/export pages can consume it
-      try {
-        sessionStorage.setItem(
-          "chat2pdf_current_doc",
-          JSON.stringify(json.document)
-        );
-      } catch {
-        // sessionStorage unavailable (private browsing) — proceed anyway
-        // Preview will fall back to mock data
-      }
-      router.push("/processing");
+      // Fast in-memory handoff for Preview
+setCurrentDocument(json.document);
+
+// Save conversation history
+saveToHistory(json.document);
+
+try {
+  localStorage.setItem(
+  "promptpress_current_doc",
+  JSON.stringify(doc)
+);
+} catch {}
+
+router.push("/processing");
     } catch (err) {
       setError(
         err instanceof Error
@@ -82,7 +87,7 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="flex flex-col items-center px-4 pt-16 pb-12 text-center">
         <h1 className="max-w-2xl text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
-          Turn AI Conversations into Technical Documentation.
+          Transform AI Conversations into Polished Documentation.
         </h1>
         <p className="mt-5 max-w-lg text-base text-gray-500">
           Instantly convert links from ChatGPT, Claude, and Gemini into professionally formatted,
@@ -96,7 +101,7 @@ export default function LandingPage() {
             value={url}
             onChange={(e) => { setUrl(e.target.value); setError(null); }}
             onKeyDown={(e) => { if (e.key === "Enter" && !isLoading) handleConvert(); }}
-            placeholder="Paste your ChatGPT, Claude, or Gemini link here..."
+            placeholder="Paste a ChatGPT share link..."
             disabled={isLoading}
             aria-label="Share URL input"
             className="flex-1 rounded-md border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
@@ -113,7 +118,7 @@ export default function LandingPage() {
                 Extracting…
               </>
             ) : (
-              "Start Converting"
+              "Convert Conversation"
             )}
           </button>
         </div>
@@ -129,20 +134,19 @@ export default function LandingPage() {
           </p>
         )}
 
-        <div className="mt-6 flex items-center gap-6 text-xs font-medium text-gray-400">
-          <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-gray-300" />
-            OPENAI
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-gray-300" />
-            ANTHROPIC
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-gray-300" />
-            GOOGLE DEEPMIND
-          </div>
-        </div>
+       <div className="mt-6 flex flex-wrap items-center gap-3 text-sm">
+  <span className="rounded-full border border-green-200 bg-green-50 px-3 py-1 font-medium text-green-700">
+    ✓ ChatGPT
+  </span>
+
+  <span className="rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-gray-500">
+    Claude (Coming Soon)
+  </span>
+
+  <span className="rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-gray-500">
+    Gemini (Coming Soon)
+  </span>
+</div>
       </section>
 
       {/* Features Section */}
@@ -207,7 +211,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-5xl px-4">
           <div className="mb-8 flex items-end justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">Professional Document Exports</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Example Exports</h2>
               <p className="mt-1 text-sm text-gray-500">Clean layouts optimized for technical teams.</p>
             </div>
             <Link

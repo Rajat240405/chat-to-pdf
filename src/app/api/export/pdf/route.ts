@@ -122,17 +122,18 @@ export async function GET() {
         "X-Page-Count": String(pdfResult.pageCount),
       },
     });
-  } catch (error: unknown) {
-  console.error("========== PDF EXPORT ERROR ==========");
+  } catch (error) {
+  console.error("===== PDF EXPORT ERROR =====");
   console.error(error);
-  console.error("======================================");
+  console.error("============================");
 
   const message =
-    error instanceof Error ? error.message : String(error);
+    error instanceof Error ? error.stack ?? error.message : String(error);
 
   return NextResponse.json(
     {
-      error: message,
+      error: "Failed to generate PDF",
+      details: message,
     },
     { status: 500 }
   );

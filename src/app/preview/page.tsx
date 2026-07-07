@@ -197,6 +197,9 @@ localStorage.setItem(
 ]);
 
   const handleQuickExport = useCallback(async () => {
+     if (!activeDoc) {
+    return;
+  }
   setIsExporting(true);
 
   try {

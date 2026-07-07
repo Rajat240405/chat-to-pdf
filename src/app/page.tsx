@@ -64,7 +64,7 @@ saveToHistory(json.document);
 try {
   localStorage.setItem(
   "promptpress_current_doc",
-  JSON.stringify(doc)
+  JSON.stringify(json.document)
 );
 } catch {}
 

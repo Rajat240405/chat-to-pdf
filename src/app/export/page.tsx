@@ -25,7 +25,7 @@ export default function ExportPage() {
   const [selectedFormat, setSelectedFormat] = useState("pdf");
   const [fontSize, setFontSize] = useState(12);
   const [margin, setMargin] = useState<"standard" | "narrow">("standard");
-  const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
+
   const [includeLogo, setIncludeLogo] = useState(true);
   const [showTimestamps, setShowTimestamps] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -84,13 +84,12 @@ export default function ExportPage() {
 
     try {
       const options: Partial<PdfGenerationOptions> = {
-        fontSize,
-        margins: margin,
-        orientation,
-        includeLogo,
-        showTimestamps,
-        darkMode,
-      };
+  fontSize,
+  margins: margin,
+  includeLogo,
+  showTimestamps,
+  darkMode,
+};
 
       const body: Record<string, unknown> = {
         documentId: activeDocId,
@@ -311,34 +310,7 @@ export default function ExportPage() {
                   </div>
                 </div>
 
-                {/* Orientation */}
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                    Orientation
-                  </label>
-                  <div className="mt-3 flex gap-3">
-                    <button
-                      onClick={() => setOrientation("portrait")}
-                      className={`flex flex-1 items-center justify-center gap-2 rounded-md border px-4 py-2.5 text-sm font-medium transition-colors ${orientation === "portrait"
-                        ? "border-blue-200 bg-gray-100 text-blue-700"
-                        : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                        }`}
-                    >
-                      <Monitor className="h-4 w-4" />
-                      Portrait
-                    </button>
-                    <button
-                      onClick={() => setOrientation("landscape")}
-                      className={`flex flex-1 items-center justify-center gap-2 rounded-md border px-4 py-2.5 text-sm font-medium transition-colors ${orientation === "landscape"
-                        ? "border-blue-200 bg-gray-100 text-blue-700"
-                        : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                        }`}
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                      Landscape
-                    </button>
-                  </div>
-                </div>
+                
 
                 {/* Branding Options */}
                 <div>
@@ -384,8 +356,9 @@ export default function ExportPage() {
                 </label>
                 <div className="mt-3 flex aspect-[3/4] items-center justify-center rounded-md border border-gray-200 bg-gray-50 p-4">
                   <div
-                    className={`w-full rounded border shadow-sm hover:shadow-md ${orientation === "landscape" ? "aspect-[4/3]" : "aspect-[3/4]"
-                      } ${darkMode ? "bg-gray-900" : "bg-white"}`}
+                    className={`aspect-[3/4] w-full rounded border shadow-sm hover:shadow-md ${
+  darkMode ? "bg-gray-900" : "bg-white"
+}`}
                   >
                     <div className={`p-3 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                       <div className={`h-1.5 w-1/2 rounded ${darkMode ? "bg-gray-700" : "bg-gray-200"}`} />

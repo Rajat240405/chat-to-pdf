@@ -10,7 +10,7 @@
 /* === Page Setup (A4) === */
 @page {
   size: A4;
-  margin: 20mm 18mm;
+  
 }
 
 * {
@@ -41,7 +41,7 @@
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 12pt;
+  font-size: $FONT_SIZEpt;
   line-height: 1.65;
   color: #111827;
   background: white;
@@ -486,17 +486,12 @@ img {
 }
 
 /* === Narrow Margin Variant === */
-body.margin-narrow @page {
-  margin: 12mm 10mm;
-}
 
 /* === Landscape Orientation === */
-body.orientation-landscape @page {
-  size: A4 landscape;
-}
+
 
 /* === Dark Mode PDF === */
-body.dark-mode body {
+body.dark-mode {
   background-color: #0f172a;
   color: #e2e8f0;
 }
@@ -557,8 +552,8 @@ body.dark-mode blockquote {
 }
 
 .chat-transcript .markdown-body {
-  font-size: 11pt;
-  line-height: 1.7;
+    font-size: inherit;
+    line-height: 1.7;
 }
 
 .chat-transcript hr {

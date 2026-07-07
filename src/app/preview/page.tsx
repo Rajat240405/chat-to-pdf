@@ -2,12 +2,13 @@
 import { getCurrentDocument } from "@/lib/current-document-store";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import PreviewSkeleton from "@/components/PreviewSkeleton";
 
 import Header from "@/components/Header";
 import PreviewSidebar from "@/components/PreviewSidebar";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
-import { mockDocuments, type ConversationDocument } from "@/lib/mock-data";
-import { RefreshCw, Shield, ChevronDown, FileText } from "lucide-react";
+import type { ConversationDocument } from "@/lib/mock-data";
+import { FileText } from "lucide-react";
 
 // ── Content filter helpers ─────────────────────────────────────────────────────
 
@@ -69,7 +70,10 @@ function extractCodeBlocks(markdown: string): string {
  */
 function applyFilters(
   markdown: string,
-  { hidePrompts, showCodeOnly }: { hidePrompts: boolean; showCodeOnly: boolean }
+  {
+    hidePrompts,
+    showCodeOnly,
+  }: { hidePrompts: boolean; showCodeOnly: boolean },
 ): string {
   let content = markdown;
   if (showCodeOnly) content = extractCodeBlocks(content);
@@ -82,12 +86,6 @@ function applyFilters(
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function PreviewPage() {
-
-  
-  
-  const [activeDocIndex, setActiveDocIndex] = useState(0);
-  const [showDocSwitcher, setShowDocSwitcher] = useState(false);
-
   // Filter state — lifted from PreviewSidebar so PreviewPage controls content
   const [hidePrompts, setHidePrompts] = useState(false);
   const [showCodeOnly, setShowCodeOnly] = useState(false);
@@ -99,85 +97,118 @@ export default function PreviewPage() {
   // ── Real extracted document ────────────────────────────────────────────────
   // Written to sessionStorage by the homepage after POST /api/extract succeeds.
   // Falls back to mockDocuments when no extraction has been run.
-  const [extractedDoc, setExtractedDoc] =
-  useState<ConversationDocument | null>(() => getCurrentDocument());
+  const [extractedDoc, setExtractedDoc] = useState<ConversationDocument | null>(
+    () => getCurrentDocument(),
+  );
 
-  
+  const [loadingDocument, setLoadingDocument] = useState(true);
 
-useEffect(() => {
-  if (extractedDoc) return;
+  useEffect(() => {
+  if (extractedDoc) {
+    setLoadingDocument(false);
+    return;
+  }
 
   try {
-    const stored = sessionStorage.getItem("promptpress_current_doc");
+    const stored = localStorage.getItem("promptpress_current_doc");
 
     if (stored) {
       setExtractedDoc(JSON.parse(stored));
+      return;
     }
+
+    setLoadingDocument(false);
   } catch {
-    // ignore
+    setLoadingDocument(false);
   }
 }, [extractedDoc]);
 
-
+useEffect(() => {
+  if (extractedDoc) {
+    setLoadingDocument(false);
+  }
+}, [extractedDoc]);
 
   // Active document: real extracted doc when available, otherwise mock data
-const activeDoc =
-  extractedDoc ?? mockDocuments[activeDocIndex];
-
-
-
+  const activeDoc = extractedDoc;
 
   // Persist the active document ID to sessionStorage whenever it changes.
   // The export page reads this so it always exports the document the user is
   // currently viewing, not the hardcoded "doc-001".
   useEffect(() => {
-  if (!activeDoc) return;
+    if (!activeDoc) return;
 
-  try {
-    sessionStorage.setItem("promptpress_active_doc_id", activeDoc.id);
-    sessionStorage.setItem("promptpress_active_doc_title", activeDoc.title);
-  } catch {
-    // Ignore sessionStorage failures
-  }
-}, [activeDoc]);
+    try {
+      localStorage.setItem(
+  "promptpress_active_doc_id",
+  activeDoc.id
+);
+
+localStorage.setItem(
+  "promptpress_active_doc_title",
+  activeDoc.title
+);
+    } catch {
+      // Ignore sessionStorage failures
+    }
+  }, [activeDoc]);
 
   // Compute the filtered content shown to MarkdownRenderer.
   // Re-computed synchronously on every render — cheap for markdown strings.
-  const filteredContent = applyFilters(activeDoc.renderedMarkdown, {
-    hidePrompts,
-    showCodeOnly,
-  });
+  const filteredContent = activeDoc
+  ? applyFilters(activeDoc.renderedMarkdown, {
+      hidePrompts,
+      showCodeOnly,
+    })
+  : "";
 
   // Persist filtered content to sessionStorage so the export page can use it
   // when active filters are on, ensuring What-You-See === What-You-Export.
   useEffect(() => {
-    try {
-      sessionStorage.setItem("promptpress_filtered_content", filteredContent);
-      sessionStorage.setItem(
-        "promptpress_filters_active",
-        String(hidePrompts || showCodeOnly || !systemMessages)
-      );
-    } catch {
-      // degrade silently
-    }
-  }, [filteredContent, hidePrompts, showCodeOnly, systemMessages]);
+  if (!activeDoc) return;
 
+  try {
+    localStorage.setItem(
+      "promptpress_filtered_content",
+      filteredContent
+    );
 
+   sessionStorage.setItem(
+  "promptpress_current_doc",
+  JSON.stringify(activeDoc)
+);
+    localStorage.setItem(
+      "promptpress_filters_active",
+      String(
+        hidePrompts ||
+        showCodeOnly ||
+        !systemMessages
+      )
+    );
+  } catch {
+    // ignore
+  }
+}, [
+  activeDoc,
+  filteredContent,
+  hidePrompts,
+  showCodeOnly,
+  systemMessages,
+]);
 
   const handleQuickExport = useCallback(async () => {
-    
-    setIsExporting(true);
-    try {
-      const body: Record<string, unknown> = {
-        title: activeDoc.title,
-        content: filteredContent,
-        options: {
-          fontSize: 12,
-          margins: "standard",
-          orientation: "portrait",
-          includeLogo: true,
-        },
-      };
+  setIsExporting(true);
+
+  try {
+    const body: Record<string, unknown> = {
+      title: activeDoc.title,
+      content: filteredContent,
+      options: {
+        fontSize: 12,
+        margins: "standard",
+        includeLogo: true,
+      },
+    };
 
       // If any filter is active, send the filtered markdown directly so the
       // PDF contains exactly what the user sees in the preview.
@@ -198,23 +229,36 @@ const activeDoc =
       const a = document.createElement("a");
       a.href = url;
       a.download =
-        response.headers.get("Content-Disposition")?.split("filename=")?.[1]?.replace(/"/g, "") ||
+        response.headers
+          .get("Content-Disposition")
+          ?.split("filename=")?.[1]
+          ?.replace(/"/g, "") ||
         `${activeDoc.title.slice(0, 40).toLowerCase().replace(/\s+/g, "-")}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      
     } finally {
       setIsExporting(false);
     }
   }, [activeDoc, filteredContent, hidePrompts, showCodeOnly, systemMessages]);
 
+  if (loadingDocument) {
+  return <PreviewSkeleton />;
+}
 
- 
+  if (!activeDoc) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="rounded-2xl border bg-white p-10 text-center shadow-sm">
+          <h2 className="text-2xl font-semibold">No conversation found</h2>
 
-  
+          <p className="mt-3 text-gray-500">Import a conversation first.</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
@@ -224,55 +268,16 @@ const activeDoc =
         <div className="absolute left-72 right-0 top-14 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-2">
           <div className="flex items-center gap-3">
             <FileText className="h-4 w-4 text-gray-400" />
-            <span className="text-sm font-medium text-gray-900">{activeDoc.title}</span>
+            <span className="text-sm font-medium text-gray-900">
+              {activeDoc.title}
+            </span>
             {/* Document switcher only shown when using mock data (no extracted doc present) */}
-            {!extractedDoc && (
-              <button
-                id="btn-doc-switcher"
-                onClick={() => setShowDocSwitcher(!showDocSwitcher)}
-                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-              >
-                <ChevronDown className="h-4 w-4" />
-              </button>
-            )}
           </div>
-
-          {!extractedDoc && showDocSwitcher && (
-            <div className="absolute left-16 top-full mt-1 w-80 rounded-lg border border-gray-200 bg-white shadow-lg">
-              <div className="p-2">
-                {mockDocuments.map((doc, idx) => (
-                  <button
-                    key={doc.id}
-                    id={`doc-switcher-${doc.id}`}
-                    onClick={() => {
-                      setActiveDocIndex(idx);
-                      setShowDocSwitcher(false);
-                      // Reset filters when switching documents
-                      setHidePrompts(false);
-                      setShowCodeOnly(false);
-                      setSystemMessages(true);
-                    }}
-                    className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors ${activeDocIndex === idx
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-gray-700 hover:bg-gray-50"
-                      }`}
-                  >
-                    <FileText className="h-4 w-4 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{doc.title}</p>
-                      <p className="text-xs text-gray-500">
-                        {doc.model} • {doc.metadata.wordCount}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div className="flex items-center gap-4 text-xs text-gray-500">
             <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
-              {activeDoc.provider.charAt(0).toUpperCase() + activeDoc.provider.slice(1)}
+              {activeDoc.provider.charAt(0).toUpperCase() +
+                activeDoc.provider.slice(1)}
             </span>
             <span>{activeDoc.messages.length} messages</span>
           </div>
@@ -299,21 +304,29 @@ const activeDoc =
               <h1 className="text-3xl font-bold leading-tight text-gray-900">
                 {activeDoc.title}
               </h1>
-              <p className="mt-2 text-sm text-gray-500">{activeDoc.description}</p>
-              <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                <div className="flex items-center gap-1.5">
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  <span>Revision {activeDoc.metadata.revision}</span>
-                </div>
+
+              <p className="mt-2 text-sm text-gray-500">
+                {activeDoc.description}
+              </p>
+
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                  {activeDoc.model.toUpperCase()}
+                </span>
+
+                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
+                  {activeDoc.model}
+                </span>
+
+                <span className="text-sm text-gray-500">
+                  {activeDoc.messages.length} messages
+                </span>
+
                 <span className="text-gray-300">•</span>
-                <div className="flex items-center gap-1.5">
-                  <Shield className="h-3.5 w-3.5" />
-                  <span>System Verified</span>
-                </div>
-                <span className="text-gray-300">•</span>
-                <span>{activeDoc.metadata.wordCount}</span>
-                <span className="text-gray-300">•</span>
-                <span>Created: {activeDoc.metadata.created}</span>
+
+                <span className="text-sm text-gray-500">
+                  {activeDoc.metadata.wordCount.toLocaleString()}
+                </span>
               </div>
             </div>
 
@@ -325,7 +338,9 @@ const activeDoc =
               <div className="flex flex-wrap items-center justify-between gap-4 text-xs text-gray-500">
                 <div>
                   Source conversation from{" "}
-                  <strong className="font-semibold text-gray-700">{activeDoc.model}</strong>{" "}
+                  <strong className="font-semibold text-gray-700">
+                    {activeDoc.model}
+                  </strong>{" "}
                   via{" "}
                   {activeDoc.provider === "chatgpt"
                     ? "OpenAI API"

@@ -25,11 +25,12 @@ export interface PdfGenerationOptions {
   /** Page margin style */
   margins?: "standard" | "narrow";
   /** Page orientation */
-  orientation?: "portrait" | "landscape";
+  
   /** Enable dark mode rendering */
   darkMode?: boolean;
   /** Include logo header */
   includeLogo?: boolean;
+  
   /** Timestamps visibility */
   showTimestamps?: boolean;
 }
@@ -51,22 +52,27 @@ export interface PdfResult {
  * Only call from API routes or server actions.
  */
 export async function generatePdf(options: PdfGenerationOptions): Promise<PdfResult> {
+
+    console.log("========== generatePdf START ==========");
+  console.log(options);
+  
   const {
-    title,
-    content,
-    fontSize = 12,
-    margins = "standard",
-    orientation = "portrait",
-    darkMode = false,
-    includeLogo = true,
-    showTimestamps = false,
-  } = options;
+  title,
+  content,
+  fontSize = 12,
+  margins = "standard",
+  darkMode = false,
+  includeLogo = true,
+  showTimestamps = false,
+} = options;
 
   // Step 1: Render markdown to syntax-highlighted HTML
   // Uses the shared unified/remark/rehype pipeline (markdownToHtml)
   // replacing the hand-rolled customRenderMarkdown() that previously
   // lived in this file. See src/lib/markdown-to-html.ts.
   let htmlBody = await markdownToHtml(content);
+
+  console.log("STEP 1: markdownToHtml completed");
 
   htmlBody = htmlBody.replace(
     /<pre><code class="hljs language-([a-zA-Z0-9_-]+)">([\s\S]*?)<\/code><\/pre>/g,
@@ -77,17 +83,19 @@ export async function generatePdf(options: PdfGenerationOptions): Promise<PdfRes
 </div>
 `
   );
+  console.log("STEP 2: code block replacement completed");
 
-
+console.log("STEP 3: about to build template");
   // Step 2: Build complete PDF template HTML
   const fullHtml = buildPdfTemplate({
     bodyContent: htmlBody,
     title,
     fontSize: Math.round(fontSize),
     marginClass: margins === "narrow" ? "margin-narrow" : "",
-    orientationClass: orientation === "landscape" ? "orientation-landscape" : "",
+    
     darkModeClass: darkMode ? "dark-mode" : "",
     includeLogo,
+    showTimestamps,
     provider: "ChatGPT",
     model: "GPT-5.5",
     messageCount: content.match(/\*\*(User|Assistant)\*\*/g)?.length ?? 0,
@@ -101,6 +109,8 @@ export async function generatePdf(options: PdfGenerationOptions): Promise<PdfRes
 
   });
 
+  console.log("STEP 4: template built");
+
   // Step 3: Write temp file and use Puppeteer to generate PDF
   const tempDir = "/tmp/promptpress-pdf-" + Date.now();
   fs.mkdirSync(tempDir, { recursive: true });
@@ -112,8 +122,14 @@ export async function generatePdf(options: PdfGenerationOptions): Promise<PdfRes
     // Write HTML input
     fs.writeFileSync(htmlPath, fullHtml, "utf-8");
 
+    
+    console.log("STEP 5: calling Puppeteer");
+
+
     // Generate PDF using Puppeteer
-    await runPuppeteerConversion(htmlPath, pdfPath, orientation, margins);
+    await runPuppeteerConversion(htmlPath, pdfPath, margins);
+
+    console.log("STEP 6: Puppeteer finished");
 
     // Read result
     if (!fs.existsSync(pdfPath)) {
@@ -121,9 +137,10 @@ export async function generatePdf(options: PdfGenerationOptions): Promise<PdfRes
     }
 
     const pdfBuffer = fs.readFileSync(pdfPath);
+console.log("STEP 7: PDF read");
 
     // Estimate page count based on content characteristics
-    const estimatedPages = estimatePageCount(content, orientation);
+    const estimatedPages = estimatePageCount(content)
 
     return {
       buffer: pdfBuffer,
@@ -135,7 +152,11 @@ export async function generatePdf(options: PdfGenerationOptions): Promise<PdfRes
       if (fs.existsSync(htmlPath)) fs.unlinkSync(htmlPath);
       if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
       fs.rmdirSync(tempDir, { recursive: true });
-    } catch { /* best effort */ }
+    }  catch (err) {
+    console.error("========== generatePdf FAILED ==========");
+    console.error(err);
+    throw err;
+  }
   }
 }
 
@@ -145,7 +166,6 @@ export async function generatePdf(options: PdfGenerationOptions): Promise<PdfRes
 async function runPuppeteerConversion(
   htmlPath: string,
   pdfPath: string,
-  orientation: "portrait" | "landscape",
   _margins: "standard" | "narrow"
 ): Promise<void> {
   let puppeteerModule;
@@ -177,11 +197,6 @@ async function runPuppeteerConversion(
 
     const page = await browser.newPage();
 
-    await page.setViewport({
-      width: orientation === "landscape" ? 1123 : 794,
-      height: orientation === "landscape" ? 794 : 1123,
-      deviceScaleFactor: 1,
-    });
 
     // Set content and wait for resources
     await page.setContent(
@@ -203,32 +218,49 @@ async function runPuppeteerConversion(
     }
 
     // Generate PDF
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      margin: { top: "5mm", bottom: "5mm", left: "5mm", right: "5mm" },
-      printBackground: true,
-      displayHeaderFooter: true,
-      preferCSSPageSize: true,
-      scale: 1.0,
+    const pageMargins =
+  _margins === "narrow"
+    ? {
+        top: "6mm",
+        bottom: "6mm",
+        left: "8mm",
+        right: "8mm",
+      }
+    : {
+        top: "14mm",
+        bottom: "14mm",
+        left: "18mm",
+        right: "18mm",
+      };
 
-      headerTemplate: `
-  <div style="width:100%;"></div>
+
+const pdfBuffer = await page.pdf({
+  format: "A4",
+
+  margin: pageMargins,
+
+  printBackground: true,
+  displayHeaderFooter: true,
+  preferCSSPageSize: false,
+  scale: 1,
+
+  headerTemplate: `
+    <div style="width:100%;"></div>
   `,
 
-      footerTemplate: `
-  <div style="
-    width:100%;
-    padding:0 20px;
-    font-size:9px;
-    color:#6b7280;
-    text-align:center;
-  ">
-    Page <span class="pageNumber"></span> of
-    <span class="totalPages"></span>
-  </div>
+  footerTemplate: `
+    <div style="
+      width:100%;
+      padding:0 20px;
+      font-size:9px;
+      color:#6b7280;
+      text-align:center;
+    ">
+      Page <span class="pageNumber"></span> of
+      <span class="totalPages"></span>
+    </div>
   `,
-    });
-
+});
     // Write output
     fs.writeFileSync(pdfPath, pdfBuffer);
   } finally {
@@ -262,13 +294,27 @@ function escapeHtml(text: string): string {
 
 
 /** Estimate page count based on content */
-function estimatePageCount(content: string, orientation: "portrait" | "landscape"): number {
-  const baseCharsPerPage = orientation === "landscape" ? 4500 : 3000;
-  const codeBlocks = content.match(/\`\`\`[\s\S]*?\`\`\`/g) || [];
-  const extraCode = codeBlocks.reduce((acc, cb) => acc + cb.split("\n").length * 20, 0);
-  const tblRows = (content.match(/\|/g) || []).length / 4;
-  const effectiveLength = content.length + extraCode + tblRows * 50;
-  return Math.max(1, Math.ceil(effectiveLength / baseCharsPerPage));
+function estimatePageCount(content: string): number {
+  const baseCharsPerPage = 3000;
+
+  const codeBlocks =
+    content.match(/\`\`\`[\s\S]*?\`\`\`/g) || [];
+
+  const extraCode = codeBlocks.reduce(
+    (acc, cb) => acc + cb.split("\n").length * 20,
+    0
+  );
+
+  const tblRows =
+    (content.match(/\|/g) || []).length / 4;
+
+  const effectiveLength =
+    content.length + extraCode + tblRows * 50;
+
+  return Math.max(
+    1,
+    Math.ceil(effectiveLength / baseCharsPerPage)
+  );
 }
 
 interface TemplateVars {
@@ -277,9 +323,12 @@ interface TemplateVars {
   title: string;
   fontSize: number;
   marginClass: string;
-  orientationClass: string;
+  
   darkModeClass: string;
+
   includeLogo: boolean;
+  showTimestamps: boolean;
+
   generatedAt: string;
 
   provider?: string;
@@ -293,11 +342,14 @@ const PDF_CSS = fs.readFileSync(
 
 
 function buildPdfTemplate(vars: TemplateVars): string {
+
+  
+
   let css = PDF_CSS.replace("$FONT_SIZE", String(vars.fontSize));
 
   // Build HTML using string concatenation to avoid template literal escaping issues
   const lines: string[] = [];
-  var bodyClasses = [vars.marginClass, vars.orientationClass, vars.darkModeClass].filter(Boolean).join(" ");
+  var bodyClasses = [vars.marginClass,vars.darkModeClass].filter(Boolean).join(" ");
 
   lines.push("<!DOCTYPE html>");
   lines.push('<html lang="en">');
@@ -314,17 +366,34 @@ function buildPdfTemplate(vars: TemplateVars): string {
   lines.push('<body class="' + bodyClasses + '">');
   lines.push('  <div class="pdf-document">');
 
-  if (vars.includeLogo) {
-    lines.push(
-      "  <div style='display:flex;align-items:center;justify-content:space-between;padding-bottom:16pt;border-bottom:1px solid #e5e7eb;margin-bottom:24pt;page-break-after:avoid;'>" +
-      "    <div style='display:flex;align-items:center;gap:10pt;'>" +
-      "      <svg width='28' height='28' viewBox='0 0 24 24' fill='none'><rect width='24' height='24' rx='6' fill='#111827'/><path d='M7 8h4M7 12h10M7 16h6' stroke='white' stroke-width='1.5' stroke-linecap='round'/><rect x='14' y='5' width='5' height='5' rx='1.5' fill='#2563eb'/></svg>" +
-      "      <span style='font-size:11pt;font-weight:700;letter-spacing:-0.02em;color:#111827;'>PromptPress</span>" +
-      "    </div>" +
-      "    <div style='font-size:8pt;color:#9ca3af;'>" + "Generated " + vars.generatedAt + "</div>" +
-      "  </div>"
-    );
-  }
+  lines.push(
+  "  <div style='display:flex;align-items:center;justify-content:space-between;padding-bottom:16pt;border-bottom:1px solid #e5e7eb;margin-bottom:24pt;page-break-after:avoid;'>"
+);
+
+if (vars.includeLogo) {
+  lines.push(
+    "    <div style='display:flex;align-items:center;gap:10pt;'>" +
+      "<svg width='28' height='28' viewBox='0 0 24 24' fill='none'>" +
+      "<rect width='24' height='24' rx='6' fill='#111827'/>" +
+      "<path d='M7 8h4M7 12h10M7 16h6' stroke='white' stroke-width='1.5' stroke-linecap='round'/>" +
+      "<rect x='14' y='5' width='5' height='5' rx='1.5' fill='#2563eb'/>" +
+      "</svg>" +
+      "<span style='font-size:11pt;font-weight:700;color:#111827;'>PromptPress</span>" +
+    "</div>"
+  );
+} else {
+  lines.push("<div></div>");
+}
+
+if (vars.showTimestamps) {
+  lines.push(
+    "<div style='font-size:8pt;color:#9ca3af;'>Generated " +
+      vars.generatedAt +
+      "</div>"
+  );
+}
+
+lines.push("</div>");
 
   lines.push(`
 <div class="pdf-hero">
@@ -333,11 +402,15 @@ function buildPdfTemplate(vars: TemplateVars): string {
   </div>
 
   <div class="pdf-meta-row">
-  ${vars.provider ?? "Unknown"} •
-  ${vars.model ?? "Unknown"} •
-  ${vars.messageCount ?? 0} messages •
-  ${vars.generatedAt}
-</div>
+    ${vars.provider ?? "Unknown"} •
+    ${vars.model ?? "Unknown"} •
+    ${vars.messageCount ?? 0} messages
+    ${
+      vars.showTimestamps
+        ? ` • ${vars.generatedAt}`
+        : ""
+    }
+  </div>
 </div>
 `);
   const cleanedBody = vars.bodyContent.replace(
@@ -358,11 +431,14 @@ function buildPdfTemplate(vars: TemplateVars): string {
 
 
   lines.push(
-    "  <div class='pdf-footer'>" +
-    "    <p style='margin:0;'>" + "Exported by PromptPress &mdash; " + vars.generatedAt + "</p>" +
-    "    <p style='margin:4pt 0 0 0;color:#d1d5db;'>This document was auto-generated from an AI conversation.</p>" +
-    "  </div>"
-  );
+  "  <div class='pdf-footer'>" +
+  "    <p style='margin:0;'>" +
+  "Exported by PromptPress" +
+  (vars.showTimestamps ? " &mdash; " + vars.generatedAt : "") +
+  "</p>" +
+  "    <p style='margin:4pt 0 0 0;color:#d1d5db;'>This document was auto-generated from an AI conversation.</p>" +
+  "  </div>"
+);
 
   lines.push("  </div>");
   lines.push("</body>");

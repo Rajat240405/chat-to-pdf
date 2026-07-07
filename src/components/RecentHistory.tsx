@@ -51,10 +51,10 @@ export default function RecentHistory() {
   onClick={() => {
     setCurrentDocument(doc);
 
-    sessionStorage.setItem(
-      "promptpress_current_doc",
-      JSON.stringify(doc)
-    );
+    localStorage.setItem(
+  "promptpress_current_doc",
+  JSON.stringify(doc)
+);
   }}
   className="group block rounded-xl border bg-white p-6 transition-all duration-200 hover:-translate-y-0.5 hover:border-gray-400 hover:shadow-sm hover:shadow-md"
 >

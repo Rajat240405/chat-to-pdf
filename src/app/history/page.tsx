@@ -32,14 +32,16 @@ export default function HistoryPage() {
     setCurrentDocument(doc);
 
     try {
-      sessionStorage.setItem(
-        "promptpress_current_doc",
-        JSON.stringify(doc)
-      );
+      localStorage.setItem(
+  "promptpress_current_doc",
+  JSON.stringify(doc)
+);
     } catch {}
   }
 
   function deleteConversation(id: string) {
+    if (!confirm("Delete this conversation?")) return;
+
     const updated = history.filter((d) => d.id !== id);
 
     setHistory(updated);
@@ -54,64 +56,65 @@ export default function HistoryPage() {
     <main className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-5xl px-6 py-10">
 
-        <div className="mb-10 flex items-center justify-between">
+        <div className="mb-10">
 
-          <div>
+          <Link
+            href="/"
+            className="mb-4 inline-flex items-center gap-2 text-sm text-gray-500 hover:text-black"
+          >
+            <ArrowLeft size={16} />
+            Back to Home
+          </Link>
 
-            <Link
-              href="/"
-              className="mb-4 inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900"
-            >
-              <ArrowLeft size={16} />
-              Back to Home
-            </Link>
+          <div className="flex items-center gap-3">
+            <MessageSquare className="h-8 w-8 text-gray-800" />
 
-            <h1 className="text-4xl font-bold tracking-tight">
+            <h1 className="text-4xl font-bold">
               Recent Conversations
             </h1>
-
-            <p className="mt-2 text-gray-500">
-              {history.length} conversation{history.length !== 1 && "s"} saved locally
-            </p>
-
           </div>
+
+          <p className="mt-2 text-gray-500">
+            {history.length} conversation{history.length !== 1 && "s"} saved locally
+          </p>
+
         </div>
 
         <div className="relative mb-8">
 
           <Search
-            size={18}
             className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+            size={18}
           />
 
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search conversations..."
-            className="w-full rounded-lg border bg-white py-3 pl-11 pr-4 outline-none transition focus:border-gray-900"
+            placeholder="Search by title..."
+            className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-11 pr-4 shadow-sm outline-none focus:border-black"
           />
 
         </div>
 
         {filtered.length === 0 ? (
-          <div className="rounded-xl border bg-white p-16 text-center">
+          <div className="rounded-2xl border bg-white p-16 text-center">
 
             <MessageSquare
-              size={48}
               className="mx-auto mb-4 text-gray-300"
+              size={48}
             />
 
             <h2 className="text-xl font-semibold">
-              No conversations found
+              No conversations yet
             </h2>
 
             <p className="mt-2 text-gray-500">
-              Convert a ChatGPT conversation to build your library.
+              Convert your first ChatGPT conversation to start building your library.
             </p>
 
             <Link
               href="/"
-              className="mt-6 inline-block rounded-lg bg-black px-5 py-3 text-white hover:bg-gray-800"
+              className="mt-6 inline-block rounded-xl bg-black px-6 py-3 text-white hover:bg-gray-800"
             >
               Convert Conversation
             </Link>
@@ -124,14 +127,14 @@ export default function HistoryPage() {
 
               <div
                 key={doc.id}
-                className="rounded-xl border bg-white p-6 transition hover:border-gray-400"
+                className="group rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-black hover:shadow-lg"
               >
 
                 <div className="flex items-start justify-between">
 
                   <div>
 
-                    <div className="mb-3 inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-medium capitalize text-gray-700">
+                    <div className="mb-3 inline-flex rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
                       {doc.provider}
                     </div>
 
@@ -139,16 +142,22 @@ export default function HistoryPage() {
                       {doc.title}
                     </h2>
 
-                    <p className="mt-2 text-sm text-gray-500">
-                      {doc.wordCount.toLocaleString()} words
-                    </p>
+                    <div className="mt-3 flex items-center gap-3 text-sm text-gray-500">
+                      <span>{doc.wordCount.toLocaleString()} words</span>
+
+                      <span>•</span>
+
+                      <span>
+                        {new Date(doc.createdAt ?? Date.now()).toLocaleDateString()}
+                      </span>
+                    </div>
 
                   </div>
 
                   <div className="flex items-center gap-2">
 
                     <Link
-                      href="/preview"
+                      href="/loading-preview"
                       onClick={() => openConversation(doc)}
                       className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-gray-100"
                     >
@@ -158,7 +167,7 @@ export default function HistoryPage() {
 
                     <button
                       onClick={() => deleteConversation(doc.id)}
-                      className="rounded-lg border p-2 text-gray-500 hover:bg-red-50 hover:text-red-600"
+                      className="rounded-lg border border-gray-200 p-2 text-gray-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
                     >
                       <Trash2 size={18} />
                     </button>

@@ -291,8 +291,8 @@ PromptPress currently uses **zero global state management libraries** (no Redux,
 
 #### Preview Page (`src/app/preview/page.tsx`)
 ```typescript
-const [activeDocIndex, setActiveDocIndex] = useState(0);       // Which of 3 docs is shown
-const [showDocSwitcher, setShowDocSwitcher] = useState(false); // Dropdown visibility
+       // Which of 3 docs is shown
+ // Dropdown visibility
 ```
 
 #### PreviewSidebar (`src/components/PreviewSidebar.tsx`)
@@ -517,7 +517,7 @@ Server (Next.js API Route)
     │         │     format: "A4",
     │         │     margin: { top/bottom/left/right: "5mm" },
     │         │     printBackground: true,
-    │         │     preferCSSPageSize: true,
+    │         │     preferCSSPageSize: false,
     │         │     scale: 1.0
     │         │ })
     │         ├─ Writes buffer to temp PDF file

@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       content,
       fontSize: body.options?.fontSize ?? 12,
       margins: body.options?.margins ?? "standard",
-      orientation: body.options?.orientation ?? "portrait",
+      
       darkMode: body.options?.darkMode ?? false,
       includeLogo: body.options?.includeLogo !== false,
       showTimestamps: body.options?.showTimestamps ?? false,
@@ -108,7 +108,7 @@ export async function GET() {
       content: doc.renderedMarkdown,
       fontSize: 12,
       margins: "standard",
-      orientation: "portrait",
+      
       darkMode: false,
       includeLogo: true,
     });
@@ -123,10 +123,18 @@ export async function GET() {
       },
     });
   } catch (error: unknown) {
-    
-    return NextResponse.json(
-      { error: "Sample PDF generation failed" },
-      { status: 500 }
-    );
-  }
+  console.error("========== PDF EXPORT ERROR ==========");
+  console.error(error);
+  console.error("======================================");
+
+  const message =
+    error instanceof Error ? error.message : String(error);
+
+  return NextResponse.json(
+    {
+      error: message,
+    },
+    { status: 500 }
+  );
+}
 }

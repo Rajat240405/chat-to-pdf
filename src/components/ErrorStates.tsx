@@ -1,6 +1,12 @@
 "use client";
 
-import { Link2, Lock, AlertTriangle, RefreshCw, HelpCircle } from "lucide-react";
+import {
+  Link2,
+  Lock,
+  AlertTriangle,
+  RefreshCw,
+  HelpCircle,
+} from "lucide-react";
 
 export function InvalidURLError() {
   return (
@@ -10,11 +16,15 @@ export function InvalidURLError() {
       </div>
       <h3 className="text-lg font-semibold text-gray-900">Invalid URL</h3>
       <p className="mt-2 text-sm text-gray-500">
-        This link doesn&apos;t look like a valid chat URL. Please verify the source and try again.
+        This link doesn&apos;t look like a valid chat URL. Please verify the
+        source and try again.
       </p>
-      <button className="mt-6 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+      <a
+        href="/"
+        className="mt-6 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+      >
         Edit URL
-      </button>
+      </a>
     </div>
   );
 }
@@ -25,13 +35,21 @@ export function PrivateConversationError() {
       <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-amber-50">
         <Lock className="h-6 w-6 text-amber-500" />
       </div>
-      <h3 className="text-lg font-semibold text-gray-900">Private Conversation</h3>
+      <h3 className="text-lg font-semibold text-gray-900">
+        Private Conversation
+      </h3>
       <p className="mt-2 text-sm text-gray-500">
-        The provided link is private. Please ensure sharing is enabled in your chat settings.
+        The provided link is private. Please ensure sharing is enabled in your
+        chat settings.
       </p>
-      <button className="mt-6 inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
-        Request Access
-      </button>
+      <a
+        href="https://help.openai.com/en/articles/7925741-chatgpt-shared-links-faq"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-6 inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+      >
+        How to Share
+      </a>
     </div>
   );
 }
@@ -44,7 +62,9 @@ export function ExtractionFailureError() {
           <AlertTriangle className="h-5 w-5 text-red-500" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Extraction Failure</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Extraction Failure
+          </h3>
           <p className="mt-1 text-sm text-gray-500">
             We couldn&apos;t parse this conversation. Technical details below.
           </p>
@@ -63,14 +83,22 @@ export function ExtractionFailureError() {
       </div>
 
       <div className="mt-6 flex items-center gap-4">
-        <button className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">
+        <a
+          href="/"
+          className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 transition-colors hover:text-blue-700"
+        >
           <RefreshCw className="h-4 w-4" />
           Retry Process
-        </button>
-        <button className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+        </a>
+        <a
+          href="https://github.com/Rajat240405/chat-to-pdf/issues/new/choose"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900"
+        >
           <HelpCircle className="h-4 w-4" />
           Contact Support
-        </button>
+        </a>
       </div>
     </div>
   );

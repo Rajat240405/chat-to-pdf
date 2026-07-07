@@ -25,7 +25,7 @@ export function saveToHistory(doc: ConversationDocument) {
     // Newest first
     filtered.unshift({
   ...doc,
-  createdAt: new Date().toISOString(),
+  createdAt: doc.createdAt ?? new Date().toISOString(),
 });
 
     // Keep last 20

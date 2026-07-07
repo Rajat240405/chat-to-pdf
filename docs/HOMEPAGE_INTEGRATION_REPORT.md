@@ -40,7 +40,9 @@ Click "Convert Conversation" (or press Enter in the input)
        │
        ├─ !res.ok → setError(json.error ?? generic message) → return
        │
-       ├─ !json.document → setError("Unexpected response…") → return
+       ├─ !json.document → setError("We couldn't extract that conversation.
+
+Please make sure it's a public ChatGPT share link.…") → return
        │
        ├─ sessionStorage.setItem("promptpress_current_doc", JSON.stringify(doc))
        │    (inner try/catch — private browsing degrades silently)
